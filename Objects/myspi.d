@@ -28,3 +28,4 @@
 .\objects\myspi.o: .\Library\stm32f10x_usart.h
 .\objects\myspi.o: .\Library\stm32f10x_wwdg.h
 .\objects\myspi.o: .\Library\misc.h
+.\objects\myspi.o: Hardware\MySPI.h

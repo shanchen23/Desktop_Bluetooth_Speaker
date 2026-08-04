@@ -810,7 +810,7 @@ I (.\Library\stm32f10x_tim.h)(0x4D783BB4)
 I (.\Library\stm32f10x_usart.h)(0x4D783BB4)
 I (.\Library\stm32f10x_wwdg.h)(0x4D783BB4)
 I (.\Library\misc.h)(0x4D783BB4)
-F (.\Hardware\MySPI.c)(0x6A719281)(--c99 --gnu -c --cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections -I .\Hardware -I .\Software -I .\Start -I .\Library -I .\User-IC:\Users\29789\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="539" -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER-o .\objects\myspi.o --omf_browse .\objects\myspi.crf --depend .\objects\myspi.d)
+F (.\Hardware\MySPI.c)(0x6A71A334)(--c99 --gnu -c --cpu Cortex-M3 -g -O0 --apcs=interwork --split_sections -I .\Hardware -I .\Software -I .\Start -I .\Library -I .\User-IC:\Users\29789\AppData\Local\Arm\Packs\Keil\STM32F1xx_DFP\2.4.1\Device\Include-D__UVISION_VERSION="539" -DSTM32F10X_MD -DUSE_STDPERIPH_DRIVER-o .\objects\myspi.o --omf_browse .\objects\myspi.crf --depend .\objects\myspi.d)
 I (.\Start\stm32f10x.h)(0x4D783CB4)
 I (.\Start\core_cm3.h)(0x4D523B58)
 I (C:\Keil_v5\ARM\ARMCC\include\stdint.h)(0x68469BB4)
@@ -839,4 +839,5 @@ I (.\Library\stm32f10x_tim.h)(0x4D783BB4)
 I (.\Library\stm32f10x_usart.h)(0x4D783BB4)
 I (.\Library\stm32f10x_wwdg.h)(0x4D783BB4)
 I (.\Library\misc.h)(0x4D783BB4)
-F (.\Hardware\MySPI.h)(0x6A717943)()
+I (Hardware\MySPI.h)(0x6A71A334)
+F (.\Hardware\MySPI.h)(0x6A71A334)()

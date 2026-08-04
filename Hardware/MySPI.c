@@ -1,15 +1,14 @@
 #include "stm32f10x.h"                  // Device header
+#include "MySPI.h"
 
 #define SPI_SCK_Pin GPIO_Pin_5     //PA5
 #define SPI_MISO_Pin GPIO_Pin_6    //PA6
 #define SPI_MOSI_Pin GPIO_Pin_7	   //PA7
 
 /*初始化
-  参数1：开启RCCAPB2外设时钟的参数
-  参数2：SS片选的GPIOx
-	参数3：SS片选的GPIO_Pinx
+  参数：SS引脚参数
 */
-void MySPI_Init(uint32_t SS_RCC_APB2Periph, GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
+void MySPI_Init(MySPI_SS_InitTypedef* SS)
 {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1,ENABLE);
@@ -27,12 +26,12 @@ void MySPI_Init(uint32_t SS_RCC_APB2Periph, GPIO_TypeDef* GPIOx, uint16_t GPIO_P
 	GPIO_Init(GPIOA,&GPIO_InitStructure);
 	
 	
-	RCC_APB2PeriphClockCmd(SS_RCC_APB2Periph,ENABLE);
+	RCC_APB2PeriphClockCmd(SS->RCC_APB2Periph ,ENABLE);
 	//配置SS
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin;
+	GPIO_InitStructure.GPIO_Pin = SS->GPIO_Pin;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOx,&GPIO_InitStructure);
+	GPIO_Init(SS->GPIOx,&GPIO_InitStructure);
 	
 	//配置SPI
 	SPI_InitTypeDef SPI_InitStructure;
@@ -50,32 +49,31 @@ void MySPI_Init(uint32_t SS_RCC_APB2Periph, GPIO_TypeDef* GPIOx, uint16_t GPIO_P
 	SPI_Cmd(SPI1,ENABLE);
 	
 	//初始化片选为高电平
-	GPIO_WriteBit(GPIOx,GPIO_Pin,1);
+	GPIO_WriteBit(SS->GPIOx,SS->GPIO_Pin,Bit_SET);
 }
 
 //能不能使用结构体来解决多个片选信号初始化的问题？
 
 
 /*片选信号的开始时序
-  参数1：SS片选的GPIOx
-	参数2：SS片选的GPIO_Pinx
+  参数：SS引脚参数
 */
-void MySPI_SSStart(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
+void MySPI_SSStart(MySPI_SS_InitTypedef* SS)
 {
-	GPIO_WriteBit(GPIOx,GPIO_Pin,0);
+	GPIO_WriteBit(SS->GPIOx,SS->GPIO_Pin,Bit_RESET);
 }
 
 /*片选信号的停止时序
-  参数1：SS片选的GPIOx
-	参数2：SS片选的GPIO_Pinx
+  参数：SS引脚参数
 */
-void MySPI_SSStop(GPIO_TypeDef* GPIOx, uint16_t GPIO_Pin)
+void MySPI_SSStop(MySPI_SS_InitTypedef* SS)
 {
-	GPIO_WriteBit(GPIOx,GPIO_Pin,1);
+	GPIO_WriteBit(SS->GPIOx,SS->GPIO_Pin,Bit_SET);
 }
 
 /*交换数据
 	参数：发送的数据
+	返回：接收的数据
 */
 uint8_t MySPI_SwapByte(uint8_t ByteSend)
 {
