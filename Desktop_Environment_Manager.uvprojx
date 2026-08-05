@@ -689,6 +689,16 @@
               <FileType>5</FileType>
               <FilePath>.\Hardware\MySPI.h</FilePath>
             </File>
+            <File>
+              <FileName>SYSTime.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\SYSTime.c</FilePath>
+            </File>
+            <File>
+              <FileName>SYSTime.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\SYSTime.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
