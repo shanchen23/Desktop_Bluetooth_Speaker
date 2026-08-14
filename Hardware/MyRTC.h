@@ -1,5 +1,5 @@
-#ifndef __SYSTIME_H_
-#define __SYSTIME_H_
+#ifndef __MyRTC_H_
+#define __MyRTC_H_
 
 typedef struct
 {
@@ -12,6 +12,8 @@ typedef struct
 	
 }TimeDateTypedef;
 
-void SYSTime_Init(void);
+void MyRTC_Init(void);
+void MyRTC_SetTime(TimeDateTypedef *SetTime);
+TimeDateTypedef MyRTC_ReadTime(void);
 
 #endif

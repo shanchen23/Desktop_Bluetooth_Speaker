@@ -690,19 +690,41 @@
               <FilePath>.\Hardware\MySPI.h</FilePath>
             </File>
             <File>
-              <FileName>SYSTime.c</FileName>
+              <FileName>LCD.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Hardware\SYSTime.c</FilePath>
+              <FilePath>.\Hardware\LCD.c</FilePath>
             </File>
             <File>
-              <FileName>SYSTime.h</FileName>
+              <FileName>LCD.h</FileName>
               <FileType>5</FileType>
-              <FilePath>.\Hardware\SYSTime.h</FilePath>
+              <FilePath>.\Hardware\LCD.h</FilePath>
+            </File>
+            <File>
+              <FileName>MyRTC.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\MyRTC.c</FilePath>
+            </File>
+            <File>
+              <FileName>MyRTC.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\MyRTC.h</FilePath>
             </File>
           </Files>
         </Group>
         <Group>
           <GroupName>Software</GroupName>
+          <Files>
+            <File>
+              <FileName>SYSTime.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Software\SYSTime.c</FilePath>
+            </File>
+            <File>
+              <FileName>SYSTime.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Software\SYSTime.h</FilePath>
+            </File>
+          </Files>
         </Group>
       </Groups>
     </Target>

@@ -1,9 +1,9 @@
 #include "stm32f10x.h"                  // Device header
-#include "SYSTime.h"
+#include "MyRTC.h"
 #include <Time.h>
 
 //初始化RTC实时时钟
-void SYSTime_Init(void)
+void MyRTC_Init(void)
 {
 	//设置寄存器RCC_APB1ENR的PWREN和BKPEN位，使能电源和后备接口时钟
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP,ENABLE);

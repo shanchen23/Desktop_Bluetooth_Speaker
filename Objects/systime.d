@@ -1,4 +1,4 @@
-.\objects\systime.o: Hardware\SYSTime.c
+.\objects\systime.o: Software\SYSTime.c
 .\objects\systime.o: .\Start\stm32f10x.h
 .\objects\systime.o: .\Start\core_cm3.h
 .\objects\systime.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdint.h
@@ -28,5 +28,4 @@
 .\objects\systime.o: .\Library\stm32f10x_usart.h
 .\objects\systime.o: .\Library\stm32f10x_wwdg.h
 .\objects\systime.o: .\Library\misc.h
-.\objects\systime.o: Hardware\SYSTime.h
-.\objects\systime.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\Time.h
+.\objects\systime.o: .\User\stm32f10x_it.h

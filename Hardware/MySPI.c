@@ -8,7 +8,7 @@
 /*初始化
   参数：SS引脚参数
 */
-void MySPI_Init(MySPI_SS_InitTypedef* SS)
+void MySPI_Init(const MySPI_SS_InitTypedef* SS)
 {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1,ENABLE);
@@ -52,13 +52,11 @@ void MySPI_Init(MySPI_SS_InitTypedef* SS)
 	GPIO_WriteBit(SS->GPIOx,SS->GPIO_Pin,Bit_SET);
 }
 
-//能不能使用结构体来解决多个片选信号初始化的问题？
-
 
 /*片选信号的开始时序
   参数：SS引脚参数
 */
-void MySPI_SSStart(MySPI_SS_InitTypedef* SS)
+void MySPI_SSStart(const MySPI_SS_InitTypedef* SS)
 {
 	GPIO_WriteBit(SS->GPIOx,SS->GPIO_Pin,Bit_RESET);
 }
@@ -66,7 +64,7 @@ void MySPI_SSStart(MySPI_SS_InitTypedef* SS)
 /*片选信号的停止时序
   参数：SS引脚参数
 */
-void MySPI_SSStop(MySPI_SS_InitTypedef* SS)
+void MySPI_SSStop(const MySPI_SS_InitTypedef* SS)
 {
 	GPIO_WriteBit(SS->GPIOx,SS->GPIO_Pin,Bit_SET);
 }

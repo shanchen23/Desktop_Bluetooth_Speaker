@@ -15,9 +15,9 @@ typedef struct
 }MySPI_SS_InitTypedef;
 
 
-void MySPI_Init(MySPI_SS_InitTypedef* SS);
-void MySPI_SSStart(MySPI_SS_InitTypedef* SS);
-void MySPI_SSStop(MySPI_SS_InitTypedef* SS);
+void MySPI_Init(const MySPI_SS_InitTypedef* SS);
+void MySPI_SSStart(const MySPI_SS_InitTypedef* SS);
+void MySPI_SSStop(const MySPI_SS_InitTypedef* SS);
 uint8_t MySPI_SwapByte(uint8_t ByteSend);
 
 #endif
