@@ -29,3 +29,6 @@
 .\objects\lcd.o: .\Library\stm32f10x_wwdg.h
 .\objects\lcd.o: .\Library\misc.h
 .\objects\lcd.o: Hardware\MySPI.h
+.\objects\lcd.o: .\Software\SYSTime.h
+.\objects\lcd.o: Hardware\LCD.h
+.\objects\lcd.o: Hardware\LCD_Data.h

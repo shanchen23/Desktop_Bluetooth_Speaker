@@ -700,6 +700,11 @@
               <FilePath>.\Hardware\LCD.h</FilePath>
             </File>
             <File>
+              <FileName>LCD_Data.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\LCD_Data.h</FilePath>
+            </File>
+            <File>
               <FileName>MyRTC.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\MyRTC.c</FilePath>

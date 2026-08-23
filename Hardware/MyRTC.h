@@ -1,5 +1,5 @@
-#ifndef __MyRTC_H_
-#define __MyRTC_H_
+#ifndef __MyRTC_H
+#define __MyRTC_H
 
 typedef struct
 {

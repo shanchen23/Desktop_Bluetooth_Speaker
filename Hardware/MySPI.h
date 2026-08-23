@@ -1,5 +1,5 @@
-#ifndef __MYSPI_H_
-#define __MYSPI_H_
+#ifndef __MYSPI_H
+#define __MYSPI_H
 
 
 /*配置S片选的引脚参数
