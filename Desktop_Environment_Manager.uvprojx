@@ -729,6 +729,16 @@
               <FileType>5</FileType>
               <FilePath>.\Software\SYSTime.h</FilePath>
             </File>
+            <File>
+              <FileName>Key.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Software\Key.c</FilePath>
+            </File>
+            <File>
+              <FileName>Key.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Software\Key.h</FilePath>
+            </File>
           </Files>
         </Group>
       </Groups>

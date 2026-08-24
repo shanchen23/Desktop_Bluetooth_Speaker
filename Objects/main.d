@@ -30,3 +30,4 @@
 .\objects\main.o: .\Library\misc.h
 .\objects\main.o: .\Hardware\LCD.h
 .\objects\main.o: .\Software\SYSTime.h
+.\objects\main.o: .\Software\Key.h

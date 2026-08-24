@@ -1,0 +1,35 @@
+[33mcommit 4c496f626b0065df29e4d10adacf5808f6b878de[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Author: shanchen23 <2978945796@qq.com>
+Date:   Sun Aug 23 17:51:21 2026 +0800
+
+    CLD显示函数完成
+
+[33mcommit 9b4f986d54b276f6d399ac65d0de7ec992f67287[m
+Author: shanchen23 <2978945796@qq.com>
+Date:   Fri Aug 14 11:29:13 2026 +0800
+
+    新增SYS时钟计数器，部分LCD模块
+
+[33mcommit 4ed382adeb5256c141c9c6a7a3eb4f84dcd300dc[m[33m ([m[1;31morigin/master[m[33m)[m
+Author: shanchen23 <2978945796@qq.com>
+Date:   Wed Aug 5 21:14:33 2026 +0800
+
+    新增SYSTime功能
+
+[33mcommit b3466fe0cbe7de720ffbdc17b25dc4755b7190fe[m
+Author: shanchen23 <2978945796@qq.com>
+Date:   Tue Aug 4 16:34:37 2026 +0800
+
+    SPI底层改进版
+
+[33mcommit b1db22c880db3ff9c0de2983bf154e16031c96a9[m
+Author: shanchen23 <2978945796@qq.com>
+Date:   Tue Aug 4 15:26:36 2026 +0800
+
+    SPI通信底层
+
+[33mcommit ee26d5f81aadda71bf24f6ba9b8de7cdf90409fd[m
+Author: shanchen23 <2978945796@qq.com>
+Date:   Mon Aug 3 15:01:24 2026 +0800
+
+    原始工程模板
