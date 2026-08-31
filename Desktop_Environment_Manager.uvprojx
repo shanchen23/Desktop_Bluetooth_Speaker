@@ -714,6 +714,26 @@
               <FileType>5</FileType>
               <FilePath>.\Hardware\MyRTC.h</FilePath>
             </File>
+            <File>
+              <FileName>DH11.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\DH11.c</FilePath>
+            </File>
+            <File>
+              <FileName>DH11.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\DH11.h</FilePath>
+            </File>
+            <File>
+              <FileName>Time.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\Time.c</FilePath>
+            </File>
+            <File>
+              <FileName>Time.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\Time.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

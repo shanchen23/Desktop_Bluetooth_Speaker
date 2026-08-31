@@ -19,8 +19,8 @@ const  MySPI_SS_InitTypedef LCD_DC_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_G
 																							 .GPIOx = (GPIO_TypeDef *)GPIOB,
 																							 .GPIO_Pin = GPIO_Pin_0};
 
-uint16_t ColumnAddressSet = 320 - 1;
-uint16_t RowAddressSet    = 240 - 1;
+uint16_t ColumnAddressSet = 320;
+uint16_t RowAddressSet    = 240;
 																							 
 void LCD_WriteCom(uint8_t LCD_Com);
 void LCD_WriteData(uint8_t LCD_Data);
@@ -154,8 +154,6 @@ void LCD_Init(void)
 	LCD_WriteCom(0x21);			//显示反显开启命令(INVON)
 	LCD_WriteCom(0x29); 			//显示开启命令(DISPON)
 	LCD_WriteCom(0x2C);			//内存写入命令(RAMWR)
-	
-	LCD_Clear(0x0000);
 }
 
 /*写命令
@@ -166,7 +164,7 @@ void LCD_WriteCom(uint8_t LCD_Com)
 	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_RESET);
 	
 	MySPI_SSStart(&LCD_SS_Typedef);
-	MySPI_SwapByte(LCD_Com);
+	MySPI_SendByte(LCD_Com);
 	MySPI_SSStop(&LCD_SS_Typedef);
 }
 
@@ -178,8 +176,17 @@ void LCD_WriteData(uint8_t LCD_Data)
 	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
 	
 	MySPI_SSStart(&LCD_SS_Typedef);
-	MySPI_SwapByte(LCD_Data);
+	MySPI_SendByte(LCD_Data);
 	MySPI_SSStop(&LCD_SS_Typedef);
+}
+
+/*写颜色数据
+	参数：8bit数据
+*/
+void LCD_WriteColorData(uint16_t color)
+{
+		MySPI_SendByte((uint8_t )(color>>8));
+		MySPI_SendByte((uint8_t )color);
 }
 
 /*画像素点
@@ -207,37 +214,75 @@ void LCD_DrawPixel(uint16_t x, uint16_t y, uint16_t color)
 	LCD_WriteData((uint8_t )(color));
 }
 
+/*设置窗口
+	参数1：横坐标起始坐标
+	参数2：纵坐标起始坐标
+	参数3：横坐标截至坐标
+	参数4：纵坐标截至坐标
+*/
+void LCD_SetWindow(uint16_t x, uint16_t y, uint16_t Stop_x, uint16_t Stop_y)
+{
+	Stop_x--;
+	Stop_y--;
+	
+  LCD_WriteCom(0x2A); 
+	LCD_WriteData((uint8_t )(x>>8));
+	LCD_WriteData((uint8_t )x);
+	LCD_WriteData((uint8_t )(Stop_x>>8));
+	LCD_WriteData((uint8_t )Stop_x);
+
+	LCD_WriteCom(0x2B);
+	LCD_WriteData((uint8_t )(y>>8));
+	LCD_WriteData((uint8_t )y);
+	LCD_WriteData((uint8_t )(Stop_y>>8));
+	LCD_WriteData((uint8_t )Stop_y);
+	
+	LCD_WriteCom(0x2C);
+}
+
 /*全部清屏
 	参数：清屏颜色
 */
-void LCD_Clear(uint16_t color)
+void LCD_ALLClear(uint16_t color)
 {
-	uint32_t ALLPixelNum = (ColumnAddressSet + 1) * (RowAddressSet + 1);
+	uint32_t ALLPixelNum = ColumnAddressSet * RowAddressSet;
 	
-  LCD_WriteCom(0x2A); 
-	LCD_WriteData(0x00);
-	LCD_WriteData(0x00);
-	LCD_WriteData((uint8_t )(ColumnAddressSet>>8));
-	LCD_WriteData((uint8_t )ColumnAddressSet);
-
-	LCD_WriteCom(0x2B);
-	LCD_WriteData(0x00);
-	LCD_WriteData(0x00);
-	LCD_WriteData((uint8_t )(RowAddressSet>>8));
-	LCD_WriteData((uint8_t )RowAddressSet);
+	LCD_SetWindow(0x0000, 0x0000, ColumnAddressSet, RowAddressSet);
 	
-	LCD_WriteCom(0x2C);
+	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
+	MySPI_SSStart(&LCD_SS_Typedef);
 	for(uint32_t i=0;i<ALLPixelNum;i++)
 	{
-		LCD_WriteData((uint8_t )color>>8);
-		LCD_WriteData((uint8_t )color);
+		LCD_WriteColorData(color);
 	}
+	MySPI_SSStop(&LCD_SS_Typedef);
+}
+
+/*窗口清屏
+	参数1：横坐标起始坐标
+	参数2：纵坐标起始坐标
+	参数3：横坐标截至坐标
+	参数4：纵坐标截至坐标
+	参数5：显示颜色
+*/
+void LCD_ClearWindow(uint16_t x, uint16_t y, uint16_t Stop_x, uint16_t Stop_y, uint16_t color)
+{
+	uint32_t ALLPixelNum = (Stop_x - x) * (Stop_y - y);
+	
+  LCD_SetWindow(x, y, Stop_x, Stop_y);
+	
+	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
+	MySPI_SSStart(&LCD_SS_Typedef);
+	for(uint32_t i=0;i<ALLPixelNum;i++)
+	{
+		LCD_WriteColorData(color);
+	}
+	MySPI_SSStop(&LCD_SS_Typedef);
 }
 
 /*显示字符
-	参数1：横坐标起始坐标 --->
-	参数2：纵坐标起始坐标 |
-							         V
+	参数1：横坐标起始坐标
+	参数2：纵坐标起始坐标
 	参数3：显示的字符,根据ASCII码
 	参数4：像素颜色
 */
@@ -245,24 +290,31 @@ void LCD_ShowChar(uint16_t x, uint16_t y, char Char, uint16_t color)
 {
 	uint16_t Row_Pixel;
 	
+	LCD_SetWindow(x, y, x + 16, y + 32);
+	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
+	MySPI_SSStart(&LCD_SS_Typedef);
+	
 	for(uint8_t row=0;row<32;row++)
 	{
-		Row_Pixel = (LCD_Font16x32[Char - ' '][2 * row] << 8)
-								| LCD_Font16x32[Char - ' '][2 * row + 1];
+		Row_Pixel = (uint16_t )(LCD_Font16x32[Char - ' '][2 * row] << 8)
+							| (uint16_t )LCD_Font16x32[Char - ' '][2 * row + 1];
 		for (uint8_t col=0;col<16;col++)
 		{
 			if (Row_Pixel & (0x8000>>col))
 			{
-				LCD_DrawPixel(x + col,y + row,color);
+				LCD_WriteColorData(color);
+			}else
+			{
+				LCD_WriteColorData(0x0000);
 			}
 		}
 	}
+	MySPI_SSStop(&LCD_SS_Typedef);
 }
 
 /*显示字符串
-	参数1：横坐标起始坐标 --->
-	参数2：纵坐标起始坐标 |
-							         V
+	参数1：横坐标起始坐标
+	参数2：纵坐标起始坐标
 	参数3：显示的字符串,根据ASCII码
 	参数4：像素颜色
 */
@@ -274,14 +326,13 @@ void LCD_ShowString(uint16_t x, uint16_t y, char *Char, uint16_t color)
 	}
 }
 
-/*显示数字
-	参数1：横坐标起始坐标 --->
-	参数2：纵坐标起始坐标 |
-							         V
+/*显示无符号数字
+	参数1：横坐标起始坐标
+	参数2：纵坐标起始坐标
 	参数3：显示的数字,根据ASCII码
 	参数4：像素颜色
 */
-void LCD_ShowSignedNum(uint16_t x, uint16_t y, uint32_t Num, uint16_t color)
+void LCD_ShowUnsignNum(uint16_t x, uint16_t y, uint32_t Num, uint16_t color)
 {
 	uint8_t Num_length;
 	uint32_t Places;
@@ -311,9 +362,8 @@ void LCD_ShowSignedNum(uint16_t x, uint16_t y, uint32_t Num, uint16_t color)
 }
 
 /*显示汉字
-	参数1：横坐标起始坐标 --->
-	参数2：纵坐标起始坐标 |
-							         V
+	参数1：横坐标起始坐标
+	参数2：纵坐标起始坐标
 	参数3：显示的汉字,用数组存储
 	参数4：像素颜色
 */
@@ -340,6 +390,10 @@ void LCD_ShowChinese(uint16_t x, uint16_t y, uint8_t ZW[], uint16_t color)
 			}
 		}
 		
+		LCD_SetWindow(x, y, x + 32, y + 32);
+		GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
+		MySPI_SSStart(&LCD_SS_Typedef);
+		
 		if(Fleg_Indexes == 0)
 		{
 			LCD_ShowString(x + (ZW_Num * 32), y, "??",0xffff);
@@ -347,19 +401,58 @@ void LCD_ShowChinese(uint16_t x, uint16_t y, uint8_t ZW[], uint16_t color)
 		{
 			for(uint8_t row=0;row<32;row++)
 			{
-				Row_Pixel = (LCD_ZWFont32x32[Indexes_num].Data[4 * row] << 24)
-									| (LCD_ZWFont32x32[Indexes_num].Data[4 * row + 1] << 16)
-									| (LCD_ZWFont32x32[Indexes_num].Data[4 * row + 2] << 8)
-									|  LCD_ZWFont32x32[Indexes_num].Data[4 * row + 3];
+				Row_Pixel = (uint32_t )(LCD_ZWFont32x32[Indexes_num].Data[4 * row] << 24)
+									| (uint32_t )(LCD_ZWFont32x32[Indexes_num].Data[4 * row + 1] << 16)
+									| (uint32_t )(LCD_ZWFont32x32[Indexes_num].Data[4 * row + 2] << 8)
+									| (uint32_t ) LCD_ZWFont32x32[Indexes_num].Data[4 * row + 3];
 				
 				for (uint8_t col=0;col<32;col++)
 				{
 					if (Row_Pixel & (0x80000000>>col))
 					{
-						LCD_DrawPixel((x + col) + (ZW_Num * 32), y + row,color);
+						LCD_WriteColorData(color);
+					}else
+					{
+						LCD_WriteColorData(0x0000);
 					}
 				}
 			}
 		}
+		MySPI_SSStop(&LCD_SS_Typedef);
 	}
 }
+
+/*显示32*64的时钟数字
+	参数1：横坐标起始坐标
+	参数2：纵坐标起始坐标
+	参数3：显示的数字
+	参数4：像素颜色
+*/
+void LCD_ShowTimeNum(uint16_t x, uint16_t y, uint8_t Num, uint16_t color)
+{
+	uint32_t Row_Pixel;
+	
+	LCD_SetWindow(x, y, x + 32, y + 64);
+	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
+	MySPI_SSStart(&LCD_SS_Typedef);
+	
+	for(uint8_t row=0;row<64;row++)
+	{
+		Row_Pixel = (uint32_t )(LCD_FontNum32x64[Num][4 * row] << 24)
+							| (uint32_t )(LCD_FontNum32x64[Num][4 * row + 1] << 16)
+							| (uint32_t )(LCD_FontNum32x64[Num][4 * row + 2] << 8)
+							| (uint32_t )(LCD_FontNum32x64[Num][4 * row + 3]);
+		for (uint8_t col=0;col<32;col++)
+		{
+			if (Row_Pixel & (0x80000000>>col))
+			{
+				LCD_WriteColorData(color);
+			}else
+			{
+				LCD_WriteColorData(0x0000);
+			}
+		}
+	}
+	MySPI_SSStop(&LCD_SS_Typedef);
+}
+

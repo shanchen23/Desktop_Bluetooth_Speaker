@@ -11,7 +11,7 @@ void MyRTC_Init(void)
 	//设置寄存器PWR_CR的DBP位，使能对后备寄存器和RTC的访问。
 	PWR_BackupAccessCmd(ENABLE);
 	
-	if(BKP_ReadBackupRegister(BKP_DR1) == 0x5A5A)
+	if(BKP_ReadBackupRegister(BKP_DR1) != 0x5A5A)
 	{
 		//设置在备份域控制寄存器(RCC_BDCR)里的LSEBYP和LSEON位来选择是否旁路模式
 		RCC_LSEConfig(RCC_LSE_ON);
@@ -52,7 +52,7 @@ void MyRTC_Init(void)
 void MyRTC_SetTime(TimeDateTypedef *SetTime)
 {
 	time_t Time_cnt;
-	struct tm time_date;
+	struct tm time_date = {0};
 	
 	time_date.tm_year = SetTime->tm_year - 1900;
 	time_date.tm_mon =  SetTime->tm_mon - 1;
@@ -61,7 +61,7 @@ void MyRTC_SetTime(TimeDateTypedef *SetTime)
 	time_date.tm_min =  SetTime->tm_min;
 	time_date.tm_sec =  SetTime->tm_sec;
 	
-	Time_cnt = mktime(&time_date);
+	Time_cnt = mktime(&time_date) - 8 * 60 * 60;
 	RTC_SetCounter(Time_cnt);
 }
 

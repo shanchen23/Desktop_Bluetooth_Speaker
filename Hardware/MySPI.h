@@ -19,5 +19,7 @@ void MySPI_Init(const MySPI_SS_InitTypedef* SS);
 void MySPI_SSStart(const MySPI_SS_InitTypedef* SS);
 void MySPI_SSStop(const MySPI_SS_InitTypedef* SS);
 uint8_t MySPI_SwapByte(uint8_t ByteSend);
+void MySPI_SendByte(uint8_t ByteSend);
+uint8_t MySPI_WriteByte(void);
 
 #endif

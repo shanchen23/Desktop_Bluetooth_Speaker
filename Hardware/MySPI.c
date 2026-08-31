@@ -80,3 +80,21 @@ uint8_t MySPI_SwapByte(uint8_t ByteSend)
 	while(SPI_I2S_GetFlagStatus(SPI1,SPI_I2S_FLAG_RXNE) != SET);
 	return SPI_I2S_ReceiveData(SPI1);
 }
+
+/*只发送数据
+	参数：发送的数据
+*/
+void MySPI_SendByte(uint8_t ByteSend)
+{
+	while(SPI_I2S_GetFlagStatus(SPI1,SPI_I2S_FLAG_TXE) != SET);
+	SPI_I2S_SendData(SPI1,ByteSend);
+}
+
+/*只读数据
+	返回：接收的数据
+*/
+uint8_t MySPI_WriteByte(void)
+{
+	while(SPI_I2S_GetFlagStatus(SPI1,SPI_I2S_FLAG_RXNE) != SET);
+	return SPI_I2S_ReceiveData(SPI1);
+}

@@ -30,6 +30,8 @@
 ".\objects\myspi.o"
 ".\objects\lcd.o"
 ".\objects\myrtc.o"
+".\objects\dh11.o"
+".\objects\time.o"
 ".\objects\systime.o"
 ".\objects\key.o"
 --strict --scatter ".\Objects\Desktop_Environment_Manager.sct"

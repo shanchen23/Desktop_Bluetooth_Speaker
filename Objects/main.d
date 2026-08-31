@@ -29,5 +29,6 @@
 .\objects\main.o: .\Library\stm32f10x_wwdg.h
 .\objects\main.o: .\Library\misc.h
 .\objects\main.o: .\Hardware\LCD.h
+.\objects\main.o: .\Hardware\MyRTC.h
 .\objects\main.o: .\Software\SYSTime.h
 .\objects\main.o: .\Software\Key.h
