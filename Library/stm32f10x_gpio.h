@@ -50,6 +50,19 @@
                                     ((PERIPH) == GPIOE) || \
                                     ((PERIPH) == GPIOF) || \
                                     ((PERIPH) == GPIOG))
+																		
+/*配置配置初始化引脚参数
+  参数1：GOIO外设时钟初始化
+	参数2：GOIO引脚的GPIOx
+	参数3：GOIO引脚的Pin
+*/
+typedef struct 
+{
+	uint32_t RCC_APB2Periph;
+	GPIO_TypeDef *GPIOx;
+	uint16_t GPIO_Pin;
+}GPIO_Pin_InitTypedef;
+																		
                                      
 /** 
   * @brief  Output Maximum frequency selection  

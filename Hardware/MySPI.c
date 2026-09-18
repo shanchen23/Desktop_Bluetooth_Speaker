@@ -5,21 +5,21 @@
 #define SPI_MISO_Pin GPIO_Pin_6    //PA6
 #define SPI_MOSI_Pin GPIO_Pin_7	   //PA7
 
-/*³õÊ¼»¯
-  ²ÎÊı£ºSSÒı½Å²ÎÊı
+/*åˆå§‹åŒ–
+  å‚æ•°ï¼šSSå¼•è„šå‚æ•°
 */
-void MySPI_Init(const MySPI_SS_InitTypedef* SS)
+void MySPI_Init(const GPIO_Pin_InitTypedef* SS)
 {
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_SPI1,ENABLE);
 	
 	GPIO_InitTypeDef GPIO_InitStructure;
-	//ÅäÖÃSCKºÍMOSI
+	//é…ç½®SCKå’ŒMOSI
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_InitStructure.GPIO_Pin = SPI_SCK_Pin | SPI_MOSI_Pin;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOA,&GPIO_InitStructure);
-	//ÅäÖÃMISO
+	//é…ç½®MISO
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
 	GPIO_InitStructure.GPIO_Pin = SPI_MISO_Pin;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
@@ -27,13 +27,13 @@ void MySPI_Init(const MySPI_SS_InitTypedef* SS)
 	
 	
 	RCC_APB2PeriphClockCmd(SS->RCC_APB2Periph ,ENABLE);
-	//ÅäÖÃSS
+	//é…ç½®SS
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Pin = SS->GPIO_Pin;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(SS->GPIOx,&GPIO_InitStructure);
 	
-	//ÅäÖÃSPI
+	//é…ç½®SPI
 	SPI_InitTypeDef SPI_InitStructure;
 	SPI_InitStructure.SPI_BaudRatePrescaler = SPI_BaudRatePrescaler_2;//36M
 	SPI_InitStructure.SPI_CPHA = 0;
@@ -41,60 +41,42 @@ void MySPI_Init(const MySPI_SS_InitTypedef* SS)
 	SPI_InitStructure.SPI_CRCPolynomial = 7;
 	SPI_InitStructure.SPI_DataSize = SPI_DataSize_8b;
 	SPI_InitStructure.SPI_Direction = SPI_Direction_2Lines_FullDuplex;
-	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;//¸ßÎ»ÏÈĞĞ
+	SPI_InitStructure.SPI_FirstBit = SPI_FirstBit_MSB;//é«˜ä½å…ˆè¡Œ
 	SPI_InitStructure.SPI_Mode = SPI_Mode_Master;
 	SPI_InitStructure.SPI_NSS = SPI_NSS_Soft;
 	SPI_Init(SPI1,&SPI_InitStructure);
 	
 	SPI_Cmd(SPI1,ENABLE);
 	
-	//³õÊ¼»¯Æ¬Ñ¡Îª¸ßµçÆ½
+	//åˆå§‹åŒ–ç‰‡é€‰ä¸ºé«˜ç”µå¹³
 	GPIO_WriteBit(SS->GPIOx,SS->GPIO_Pin,Bit_SET);
 }
 
 
-/*Æ¬Ñ¡ĞÅºÅµÄ¿ªÊ¼Ê±Ğò
-  ²ÎÊı£ºSSÒı½Å²ÎÊı
+/*ç‰‡é€‰ä¿¡å·çš„å¼€å§‹æ—¶åº
+  å‚æ•°ï¼šSSå¼•è„šå‚æ•°
 */
-void MySPI_SSStart(const MySPI_SS_InitTypedef* SS)
+void MySPI_SSStart(const GPIO_Pin_InitTypedef* SS)
 {
 	GPIO_WriteBit(SS->GPIOx,SS->GPIO_Pin,Bit_RESET);
 }
 
-/*Æ¬Ñ¡ĞÅºÅµÄÍ£Ö¹Ê±Ğò
-  ²ÎÊı£ºSSÒı½Å²ÎÊı
+/*ç‰‡é€‰ä¿¡å·çš„åœæ­¢æ—¶åº
+  å‚æ•°ï¼šSSå¼•è„šå‚æ•°
 */
-void MySPI_SSStop(const MySPI_SS_InitTypedef* SS)
+void MySPI_SSStop(const GPIO_Pin_InitTypedef* SS)
 {
 	GPIO_WriteBit(SS->GPIOx,SS->GPIO_Pin,Bit_SET);
 }
 
-/*½»»»Êı¾İ
-	²ÎÊı£º·¢ËÍµÄÊı¾İ
-	·µ»Ø£º½ÓÊÕµÄÊı¾İ
+/*äº¤æ¢æ•°æ®
+	å‚æ•°ï¼šå‘é€çš„æ•°æ®
+	è¿”å›ï¼šæ¥æ”¶çš„æ•°æ®
 */
 uint8_t MySPI_SwapByte(uint8_t ByteSend)
 {
 	while(SPI_I2S_GetFlagStatus(SPI1,SPI_I2S_FLAG_TXE) != SET);
 	SPI_I2S_SendData(SPI1,ByteSend);
-	while(SPI_I2S_GetFlagStatus(SPI1,SPI_I2S_FLAG_RXNE) != SET);
-	return SPI_I2S_ReceiveData(SPI1);
-}
-
-/*Ö»·¢ËÍÊı¾İ
-	²ÎÊı£º·¢ËÍµÄÊı¾İ
-*/
-void MySPI_SendByte(uint8_t ByteSend)
-{
-	while(SPI_I2S_GetFlagStatus(SPI1,SPI_I2S_FLAG_TXE) != SET);
-	SPI_I2S_SendData(SPI1,ByteSend);
-}
-
-/*Ö»¶ÁÊı¾İ
-	·µ»Ø£º½ÓÊÕµÄÊı¾İ
-*/
-uint8_t MySPI_WriteByte(void)
-{
 	while(SPI_I2S_GetFlagStatus(SPI1,SPI_I2S_FLAG_RXNE) != SET);
 	return SPI_I2S_ReceiveData(SPI1);
 }

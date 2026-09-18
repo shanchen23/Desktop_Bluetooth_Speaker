@@ -1,15 +1,15 @@
 #include "stm32f10x.h"                  // Device header
 #include "stm32f10x_it.h"
 
-//³õÊ¼»¯ÏµÍ³Ê±ÖÓÎª1msÒ»´ÎÖĞ¶Ï
+//åˆå§‹åŒ–ç³»ç»Ÿæ—¶é’Ÿä¸º1msä¸€æ¬¡ä¸­æ–­
 void SYSTime_Init(void)
 {
-	//1msÖĞ¶ÏÒ»´Î
+	//1msä¸­æ–­ä¸€æ¬¡
 	SysTick_Config(72000);
 	
 }
 
-//·µ»ØÊ±¼ä´Á1msµÄÊ±¼ä
+//è¿”å›æ—¶é—´æˆ³1msçš„æ—¶é—´
 uint32_t SYSTime_Getms(void)
 {
 	return SYS_Counter;

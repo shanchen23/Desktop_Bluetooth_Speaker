@@ -25,5 +25,5 @@ uint16_t Time_GetTimeus(void)
 void Time_Delayus(uint16_t us)
 {
 	uint16_t TIM_FlagTim = Time_GetTimeus();
-	while(Time_GetTimeus() - TIM_FlagTim < us);
+	while((uint16_t )(Time_GetTimeus() - TIM_FlagTim) < us);
 }

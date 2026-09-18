@@ -337,7 +337,7 @@
             <v6WtE>0</v6WtE>
             <v6Rtti>0</v6Rtti>
             <VariousControls>
-              <MiscControls></MiscControls>
+              <MiscControls>--locale=english</MiscControls>
               <Define>USE_STDPERIPH_DRIVER</Define>
               <Undefine></Undefine>
               <IncludePath>.\Hardware;.\Software;.\Start;.\Library;.\User</IncludePath>
@@ -733,6 +733,31 @@
               <FileName>Time.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Hardware\Time.h</FilePath>
+            </File>
+            <File>
+              <FileName>W25Q64.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\W25Q64.c</FilePath>
+            </File>
+            <File>
+              <FileName>W25Q64.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\W25Q64.h</FilePath>
+            </File>
+            <File>
+              <FileName>W25Q64_Ins.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\W25Q64_Ins.h</FilePath>
+            </File>
+            <File>
+              <FileName>BT301M.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\BT301M.c</FilePath>
+            </File>
+            <File>
+              <FileName>BT301M.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\BT301M.h</FilePath>
             </File>
           </Files>
         </Group>

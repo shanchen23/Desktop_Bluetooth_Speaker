@@ -2,52 +2,52 @@
 #include "MyRTC.h"
 #include <Time.h>
 
-//��ʼ��RTCʵʱʱ��
+//初始化RTC实时时钟
 void MyRTC_Init(void)
 {
-	//���üĴ���RCC_APB1ENR��PWREN��BKPENλ��ʹ�ܵ�Դ�ͺ󱸽ӿ�ʱ��
+	//设置寄存器RCC_APB1ENR的PWREN和BKPEN位，使能电源和后备接口时钟
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_BKP,ENABLE);
 	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR,ENABLE);
-	//���üĴ���PWR_CR��DBPλ��ʹ�ܶԺ󱸼Ĵ�����RTC�ķ��ʡ�
+	//设置寄存器PWR_CR的DBP位，使能对后备寄存器和RTC的访问。
 	PWR_BackupAccessCmd(ENABLE);
 	
 	if(BKP_ReadBackupRegister(BKP_DR1) != 0x5A5A)
 	{
-		//�����ڱ�������ƼĴ���(RCC_BDCR)���LSEBYP��LSEONλ��ѡ���Ƿ���·ģʽ
+		//设置在备份域控制寄存器(RCC_BDCR)里的LSEBYP和LSEON位来选择是否旁路模式
 		RCC_LSEConfig(RCC_LSE_ON);
-		//��������ƼĴ���(RCC_BDCR)���LSERDYָʾLSE�������Ƿ��ȶ�
+		//备份域控制寄存器(RCC_BDCR)里的LSERDY指示LSE晶体振荡是否稳定
 		while (RCC_GetFlagStatus(RCC_FLAG_LSERDY) != SET);
-		//ѡ��RTCCLK��ԴΪLSE
+		//选择RTCCLK来源为LSE
 		RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);
-		//RTCCLKʹ��
+		//RTCCLK使能
 		RCC_RTCCLKCmd(ENABLE);
 		
 		
-		//�ȴ�RTC_CNT��RTC_ALR��RTC_PRLͬ��
+		//等待RTC_CNT、RTC_ALR或RTC_PRL同步
 		RTC_WaitForSynchro();
-		//�ȴ���һ���������
+		//等待上一个操作完成
 		RTC_WaitForLastTask();
 		
 		RTC_SetPrescaler(32768 - 1);
 		RTC_WaitForLastTask();
 		
-		//�����ǳ�ʼʱ��
+		//这里是初始时间
 		RTC_SetCounter(0);
 		RTC_WaitForLastTask();
 		
 		BKP_WriteBackupRegister(BKP_DR1,0x5A5A);
 	}else
 	{
-		//�ȴ�RTC_CNT��RTC_ALR��RTC_PRLͬ��
+		//等待RTC_CNT、RTC_ALR或RTC_PRL同步
 		RTC_WaitForSynchro();
-		//RTC_CR�Ĵ����е�RTOFF״̬λ�ǡ�1��ʱ���ſ���д��RTC�Ĵ�����
+		//RTC_CR寄存器中的RTOFF状态位是’1’时，才可以写入RTC寄存器。
 		RTC_WaitForLastTask();
 	}
 }
 
 /*
-	����ʵʱʱ�ӵ�ʱ��
-	������ʱ������Ľṹ��
+	设置实时时钟的时间
+	参数：时间参数的结构体
 */
 void MyRTC_SetTime(TimeDateTypedef *SetTime)
 {
@@ -66,18 +66,18 @@ void MyRTC_SetTime(TimeDateTypedef *SetTime)
 }
 
 /*
-	��ȡRTCʵʱʱ�ӵĵ�ǰʱ��
-	���أ�ʱ������Ľṹ��
+	读取RTC实时时钟的当前时间
+	返回：时间参数的结构体
 */
 TimeDateTypedef MyRTC_ReadTime(void)
 {
 	time_t time_cnt;
 	struct tm time_date;
 	TimeDateTypedef ReadTime;
-	//��ȡRTC��CNT����ȡ��ǰ���������   + 8 * 60 * 60Ϊ��������ʱ������
+	//读取RTC的CNT，获取当前的秒计数器   + 8 * 60 * 60为东八区的时区调整
 	time_cnt = RTC_GetCounter() + 8 * 60 * 60;
 	
-	//ʹ��localtime���������������ת��Ϊ����ʱ���ʽ
+	//使用localtime函数，将秒计数器转换为日期时间格式
 	time_date = *localtime(&time_cnt);
 	
 	ReadTime.tm_year = time_date.tm_year + 1900;

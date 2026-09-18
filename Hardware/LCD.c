@@ -1,31 +1,55 @@
 #include "stm32f10x.h"                  // Device header
 #include "MySPI.h"
 #include "SYSTime.h"
-#include "LCD.h"
 #include "LCD_Data.h"
+#include "W25Q64.h"
 
-//Æ¬Ñ¡Òı½ÅÅäÖÃ
-const  MySPI_SS_InitTypedef LCD_SS_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOA,
+//ç‰‡é€‰å¼•è„šé…ç½®
+const  GPIO_Pin_InitTypedef LCD_SS_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOA,
 																							 .GPIOx = (GPIO_TypeDef *)GPIOA,
 																							 .GPIO_Pin = GPIO_Pin_4};
 
-//¸´Î»Òı½ÅÅäÖÃ
-const  MySPI_SS_InitTypedef LCD_RST_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOB,
+//å¤ä½å¼•è„šé…ç½®
+const  GPIO_Pin_InitTypedef LCD_RST_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOB,
 																							 .GPIOx = (GPIO_TypeDef *)GPIOB,
 																							 .GPIO_Pin = GPIO_Pin_1};
 
-//Êı¾İ/ÃüÁîÑ¡ÔñÒı½ÅÅäÖÃ
-const  MySPI_SS_InitTypedef LCD_DC_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOB,
+//æ•°æ®/å‘½ä»¤é€‰æ‹©å¼•è„šé…ç½®
+const  GPIO_Pin_InitTypedef LCD_DC_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOB,
 																							 .GPIOx = (GPIO_TypeDef *)GPIOB,
 																							 .GPIO_Pin = GPIO_Pin_0};
 
+uint8_t UTF8Char_length = 0;
 uint16_t ColumnAddressSet = 320;
 uint16_t RowAddressSet    = 240;
+W25Q64_IndexTableTypedef IndexTable_Typedef;
 																							 
-void LCD_WriteCom(uint8_t LCD_Com);
-void LCD_WriteData(uint8_t LCD_Data);
 
-//LCDÆÁÄ»³õÊ¼»¯
+/*å†™å‘½ä»¤
+	å‚æ•°ï¼š8bitå‘½ä»¤ç 
+*/
+void LCD_WriteCom(uint8_t LCD_Com)
+{
+	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_RESET);
+	
+	MySPI_SSStart(&LCD_SS_Typedef);
+	MySPI_SwapByte(LCD_Com);
+	MySPI_SSStop(&LCD_SS_Typedef);
+}
+
+/*å†™æ•°æ®
+	å‚æ•°ï¼š8bitæ•°æ®
+*/
+void LCD_WriteData(uint8_t LCD_Data)
+{
+	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
+	
+	MySPI_SSStart(&LCD_SS_Typedef);
+	MySPI_SwapByte(LCD_Data);
+	MySPI_SSStop(&LCD_SS_Typedef);
+}
+
+//LCDå±å¹•åˆå§‹åŒ–
 void LCD_Init(void)
 {	
 	MySPI_Init(&LCD_SS_Typedef);
@@ -45,71 +69,71 @@ void LCD_Init(void)
 	GPIO_Init(LCD_DC_Typedef.GPIOx,&GPIO_DC_InitStructure);
 
 
-	//Ó²¼ş¸´Î»£ºÏÈÀ­µÍÔÙÀ­¸ß
+	//ç¡¬ä»¶å¤ä½ï¼šå…ˆæ‹‰ä½å†æ‹‰é«˜
 	GPIO_WriteBit(LCD_RST_Typedef.GPIOx,LCD_RST_Typedef.GPIO_Pin,Bit_RESET);
 	SYSTime_Delayms(6);
 	GPIO_WriteBit(LCD_RST_Typedef.GPIOx,LCD_RST_Typedef.GPIO_Pin,Bit_SET);
 	SYSTime_Delayms(6);
 
-	//Èí¼ş¸´Î»ÃüÁî
+	//è½¯ä»¶å¤ä½å‘½ä»¤
 	LCD_WriteCom(0x01);
 	SYSTime_Delayms(6);
 
-	//ÍË³öË¯ÃßÄ£Ê½
+	//é€€å‡ºç¡çœ æ¨¡å¼
 	LCD_WriteCom(0x11);
 	SYSTime_Delayms(120);
 
 
-	//--------------------------------ST7789S Ö¡ËÙÂÊ¿ØÖÆ----------------------------------//
-	LCD_WriteCom(0x2A); //ÁĞµØÖ·ÉèÖÃÃüÁî(CASET)
+	//--------------------------------ST7789S å¸§é€Ÿç‡æ§åˆ¶----------------------------------//
+	LCD_WriteCom(0x2A); //åˆ—åœ°å€è®¾ç½®å‘½ä»¤(CASET)
 	LCD_WriteData(0x00);
 	LCD_WriteData(0x00);
 	LCD_WriteData((uint8_t )(ColumnAddressSet>>8));
 	LCD_WriteData((uint8_t )ColumnAddressSet);
 
-	LCD_WriteCom(0x2B); //ĞĞµØÖ·ÉèÖÃÃüÁî(RASET)
+	LCD_WriteCom(0x2B); //è¡Œåœ°å€è®¾ç½®å‘½ä»¤(RASET)
 	LCD_WriteData(0x00);
 	LCD_WriteData(0x00);
 	LCD_WriteData((uint8_t )(RowAddressSet>>8));
 	LCD_WriteData((uint8_t )RowAddressSet);
 
-	LCD_WriteCom(0xB2); //ÃÅ¿Ø¿ØÖÆÃüÁî(PORCTRL)
+	LCD_WriteCom(0xB2); //é—¨æ§æ§åˆ¶å‘½ä»¤(PORCTRL)
 	LCD_WriteData(0x0C); 
 	LCD_WriteData(0x0C); 
 	LCD_WriteData(0x00); 
 	LCD_WriteData(0x33); 
 	LCD_WriteData(0x33); 
 
-	LCD_WriteCom(0x20);//¹Ø±ÕÏÔÊ¾·´ÏÔÃüÁî(INVOFF)
+	LCD_WriteCom(0x20);//å…³é—­æ˜¾ç¤ºåæ˜¾å‘½ä»¤(INVOFF)
 
-	LCD_WriteCom(0xB7);//ÃÅ¿Ø¿ØÖÆÃüÁî(GCTRL)
+	LCD_WriteCom(0xB7);//é—¨æ§æ§åˆ¶å‘½ä»¤(GCTRL)
 	LCD_WriteData(0x56);
 
-//---------------------------------ST7789S µçÔ´¿ØÖÆ--------------------------------------//
-	LCD_WriteCom(0xBB); //VCOMÉèÖÃÃüÁî(VCOMS)
+//---------------------------------ST7789S ç”µæºæ§åˆ¶--------------------------------------//
+	LCD_WriteCom(0xBB); //VCOMè®¾ç½®å‘½ä»¤(VCOMS)
 	LCD_WriteData(0x18); 
 
-	LCD_WriteCom(0xc0); 		//LCM¿ØÖÆÃüÁî(LCMCTRL)
+	LCD_WriteCom(0xc0); 		//LCMæ§åˆ¶å‘½ä»¤(LCMCTRL)
 	LCD_WriteData(0x2C); 
 
-	LCD_WriteCom(0xC2); 		//VDVºÍVRHÃüÁîÊ¹ÄÜ(VDVVRHEN)
+	LCD_WriteCom(0xC2); 		//VDVå’ŒVRHå‘½ä»¤ä½¿èƒ½(VDVVRHEN)
 	LCD_WriteData(0x01); 
 
-	LCD_WriteCom(0xC3); //VRHÉèÖÃÃüÁî(VRHS)
+	LCD_WriteCom(0xC3); //VRHè®¾ç½®å‘½ä»¤(VRHS)
 	LCD_WriteData(0x1F); 
 
-	LCD_WriteCom(0xC4); 			//VDVÉèÖÃÃüÁî(VDVS)
+	LCD_WriteCom(0xC4); 			//VDVè®¾ç½®å‘½ä»¤(VDVS)
 	LCD_WriteData(0x20); 
 
-	LCD_WriteCom(0xC6); 			//Ö¡ÂÊ¿ØÖÆ2ÃüÁî(FRCTRL2)
+	LCD_WriteCom(0xC6); 			//å¸§ç‡æ§åˆ¶2å‘½ä»¤(FRCTRL2)
 	LCD_WriteData(0x0F);
 	
-	LCD_WriteCom(0xD0);  //µçÔ´¿ØÖÆ1ÃüÁî(PWCTRL1)
-	LCD_WriteData(0xA6); //AVDD/GVDDµçÑ¹²ÎÊı
-	LCD_WriteData(0xA1); //µçÔ´¿ØÖÆ²ÎÊı
-//--------------------------------ST7789S GammaÙ¤ÂíĞ£Õı---------------------------------------//
+	LCD_WriteCom(0xD0);  //ç”µæºæ§åˆ¶1å‘½ä»¤(PWCTRL1)
+	LCD_WriteData(0xA6); //AVDD/GVDDç”µå‹å‚æ•°
+	LCD_WriteData(0xA1); //ç”µæºæ§åˆ¶å‚æ•°
+//--------------------------------ST7789S Gammaä¼½é©¬æ ¡æ­£---------------------------------------//
 
-	LCD_WriteCom(0xe0); //ÕıµçÑ¹GammaĞ£ÕıÃüÁî(PVGAMCTRL)
+	LCD_WriteCom(0xe0); //æ­£ç”µå‹Gammaæ ¡æ­£å‘½ä»¤(PVGAMCTRL)
 	LCD_WriteData(0xD0); 
 	LCD_WriteData(0x0D); 
 	LCD_WriteData(0x14); 
@@ -125,7 +149,7 @@ void LCD_Init(void)
 	LCD_WriteData(0x2d); 
 	LCD_WriteData(0x32); 
 
-	LCD_WriteCom(0xE1); //¸ºµçÑ¹GammaĞ£ÕıÃüÁî(NVGAMCTRL)
+	LCD_WriteCom(0xE1); //è´Ÿç”µå‹Gammaæ ¡æ­£å‘½ä»¤(NVGAMCTRL)
 	LCD_WriteData(0xD0); 
 	LCD_WriteData(0x0D); 
 	LCD_WriteData(0x14); 
@@ -141,59 +165,64 @@ void LCD_Init(void)
 	LCD_WriteData(0x2d); 
 	LCD_WriteData(0x32); 
 
-	LCD_WriteCom(0x36); 			//ÄÚ´æÊı¾İ·ÃÎÊ¿ØÖÆÃüÁî(MADCTL)
+	LCD_WriteCom(0x36); 			//å†…å­˜æ•°æ®è®¿é—®æ§åˆ¶å‘½ä»¤(MADCTL)
 	LCD_WriteData(0xA0); 
 
-	LCD_WriteCom(0x3A); 			//½Ó¿ÚÏñËØ¸ñÊ½ÃüÁî(COLMOD)
+	LCD_WriteCom(0x3A); 			//æ¥å£åƒç´ æ ¼å¼å‘½ä»¤(COLMOD)
 	LCD_WriteData(0x55);
 
-	LCD_WriteCom(0xE7); 			//SPI2Ê¹ÄÜÃüÁî£¨2Êı¾İÍ¨µÀÄ£Ê½£©
+	LCD_WriteCom(0xE7); 			//SPI2ä½¿èƒ½å‘½ä»¤ï¼ˆ2æ•°æ®é€šé“æ¨¡å¼ï¼‰
 	LCD_WriteData(0x00); 
 
 
-	LCD_WriteCom(0x21);			//ÏÔÊ¾·´ÏÔ¿ªÆôÃüÁî(INVON)
-	LCD_WriteCom(0x29); 			//ÏÔÊ¾¿ªÆôÃüÁî(DISPON)
-	LCD_WriteCom(0x2C);			//ÄÚ´æĞ´ÈëÃüÁî(RAMWR)
+	LCD_WriteCom(0x21);			//æ˜¾ç¤ºåæ˜¾å¼€å¯å‘½ä»¤(INVON)
+	LCD_WriteCom(0x29); 			//æ˜¾ç¤ºå¼€å¯å‘½ä»¤(DISPON)
+	LCD_WriteCom(0x2C);			//å†…å­˜å†™å…¥å‘½ä»¤(RAMWR)
 }
 
-/*Ğ´ÃüÁî
-	²ÎÊı£º8bitÃüÁîÂë
-*/
-void LCD_WriteCom(uint8_t LCD_Com)
-{
-	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_RESET);
-	
-	MySPI_SSStart(&LCD_SS_Typedef);
-	MySPI_SendByte(LCD_Com);
-	MySPI_SSStop(&LCD_SS_Typedef);
-}
-
-/*Ğ´Êı¾İ
-	²ÎÊı£º8bitÊı¾İ
-*/
-void LCD_WriteData(uint8_t LCD_Data)
-{
-	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
-	
-	MySPI_SSStart(&LCD_SS_Typedef);
-	MySPI_SendByte(LCD_Data);
-	MySPI_SSStop(&LCD_SS_Typedef);
-}
-
-/*Ğ´ÑÕÉ«Êı¾İ
-	²ÎÊı£º8bitÊı¾İ
+/*å†™é¢œè‰²æ•°æ®
+	å‚æ•°ï¼š8bitæ•°æ®
 */
 void LCD_WriteColorData(uint16_t color)
 {
-		MySPI_SendByte((uint8_t )(color>>8));
-		MySPI_SendByte((uint8_t )color);
+		MySPI_SwapByte((uint8_t )(color>>8));
+		MySPI_SwapByte((uint8_t )color);
 }
 
-/*»­ÏñËØµã
-	²ÎÊı1£ººá×ø±ê --->
-	²ÎÊı2£º×İ×ø±ê |
-							 V
-	²ÎÊı3£ºÏñËØÑÕÉ«
+/*UTF-8è§£ç 
+	å‚æ•°ï¼šUTF8ç¼–ç 
+	è¿”å›ï¼šUTF8ç ç‚¹
+*/
+uint32_t LCD_UTF8Decode(char *UTF8)
+{
+	uint32_t CodePoint = 0;
+	UTF8Char_length = 0;
+	
+	while((UTF8Char_length < 4) && (*UTF8 & (0x80 >> UTF8Char_length)))
+	{
+		UTF8Char_length++;
+	}
+	
+	if(UTF8Char_length == 0)
+	{
+		CodePoint = *UTF8;
+	}else
+	{
+		CodePoint = *UTF8 & (0x7F >> UTF8Char_length);
+		for(int8_t i = 1; i < UTF8Char_length; i++)
+		{
+			CodePoint = (CodePoint << 6) | (*(UTF8 + i) & 0x3F);
+		}
+	}
+	
+	return CodePoint;
+}
+
+/*ç”»åƒç´ ç‚¹
+	å‚æ•°1ï¼šæ¨ªåæ ‡ --->
+	å‚æ•°2ï¼šçºµåæ ‡ |
+							  V
+	å‚æ•°3ï¼šåƒç´ é¢œè‰²
 */
 void LCD_DrawPixel(uint16_t x, uint16_t y, uint16_t color)
 {
@@ -209,16 +238,16 @@ void LCD_DrawPixel(uint16_t x, uint16_t y, uint16_t color)
   LCD_WriteData((uint8_t )(y >> 8));
 	LCD_WriteData((uint8_t )(y));
     
-  LCD_WriteCom(0x2C); // Ğ´ÏÔ´æ
+  LCD_WriteCom(0x2C); // å†™æ˜¾å­˜
   LCD_WriteData((uint8_t )(color >> 8)); 
 	LCD_WriteData((uint8_t )(color));
 }
 
-/*ÉèÖÃ´°¿Ú
-	²ÎÊı1£ººá×ø±êÆğÊ¼×ø±ê
-	²ÎÊı2£º×İ×ø±êÆğÊ¼×ø±ê
-	²ÎÊı3£ººá×ø±ê½ØÖÁ×ø±ê
-	²ÎÊı4£º×İ×ø±ê½ØÖÁ×ø±ê
+/*è®¾ç½®çª—å£
+	å‚æ•°1ï¼šæ¨ªåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°2ï¼šçºµåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°3ï¼šæ¨ªåæ ‡æˆªè‡³åæ ‡
+	å‚æ•°4ï¼šçºµåæ ‡æˆªè‡³åæ ‡
 */
 void LCD_SetWindow(uint16_t x, uint16_t y, uint16_t Stop_x, uint16_t Stop_y)
 {
@@ -240,8 +269,8 @@ void LCD_SetWindow(uint16_t x, uint16_t y, uint16_t Stop_x, uint16_t Stop_y)
 	LCD_WriteCom(0x2C);
 }
 
-/*È«²¿ÇåÆÁ
-	²ÎÊı£ºÇåÆÁÑÕÉ«
+/*å…¨éƒ¨æ¸…å±
+	å‚æ•°ï¼šæ¸…å±é¢œè‰²
 */
 void LCD_ALLClear(uint16_t color)
 {
@@ -258,14 +287,14 @@ void LCD_ALLClear(uint16_t color)
 	MySPI_SSStop(&LCD_SS_Typedef);
 }
 
-/*´°¿ÚÇåÆÁ
-	²ÎÊı1£ººá×ø±êÆğÊ¼×ø±ê
-	²ÎÊı2£º×İ×ø±êÆğÊ¼×ø±ê
-	²ÎÊı3£ººá×ø±ê½ØÖÁ×ø±ê
-	²ÎÊı4£º×İ×ø±ê½ØÖÁ×ø±ê
-	²ÎÊı5£ºÏÔÊ¾ÑÕÉ«
+/*çª—å£æ¸…å±
+	å‚æ•°1ï¼šæ¨ªåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°2ï¼šçºµåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°3ï¼šæ¨ªåæ ‡æˆªè‡³åæ ‡
+	å‚æ•°4ï¼šçºµåæ ‡æˆªè‡³åæ ‡
+	å‚æ•°5ï¼šæ˜¾ç¤ºé¢œè‰²
 */
-void LCD_ClearWindow(uint16_t x, uint16_t y, uint16_t Stop_x, uint16_t Stop_y, uint16_t color)
+void LCD_WindowClear(uint16_t x, uint16_t y, uint16_t Stop_x, uint16_t Stop_y, uint16_t color)
 {
 	uint32_t ALLPixelNum = (Stop_x - x) * (Stop_y - y);
 	
@@ -280,67 +309,87 @@ void LCD_ClearWindow(uint16_t x, uint16_t y, uint16_t Stop_x, uint16_t Stop_y, u
 	MySPI_SSStop(&LCD_SS_Typedef);
 }
 
-/*ÏÔÊ¾×Ö·û
-	²ÎÊı1£ººá×ø±êÆğÊ¼×ø±ê
-	²ÎÊı2£º×İ×ø±êÆğÊ¼×ø±ê
-	²ÎÊı3£ºÏÔÊ¾µÄ×Ö·û,¸ù¾İASCIIÂë
-	²ÎÊı4£ºÏñËØÑÕÉ«
+/*æ˜¾ç¤ºå­—ç¬¦
+	å‚æ•°1ï¼šæ¨ªåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°2ï¼šçºµåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°3ï¼šæ˜¾ç¤ºçš„å­—ç¬¦ï¼ˆåªæ”¯æŒUTF-8ï¼Œå¦‚æœæ˜¯å­—ç¬¦ä¸²å°±åªæ˜¾ç¤ºç¬¬ä¸€ä¸ªï¼‰
+	å‚æ•°4ï¼šåƒç´ é¢œè‰²
+	å‚æ•°5ï¼šèƒŒæ™¯é¢œè‰²
 */
-void LCD_ShowChar(uint16_t x, uint16_t y, char Char, uint16_t color)
+void LCD_ShowChar(uint16_t x, uint16_t y, char *utf8, uint16_t color, uint16_t BackgroundColor)
 {
-	uint16_t Row_Pixel;
+	uint16_t PixelNum;
+	uint8_t DataBuf[256] = {0};
 	
-	LCD_SetWindow(x, y, x + 16, y + 32);
-	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
+	
+	IndexTable_Typedef.CodePoint = LCD_UTF8Decode(utf8);
+	W25Q64_GetIndexTable(&IndexTable_Typedef);
+	
+	PixelNum = IndexTable_Typedef.Wide * IndexTable_Typedef.Tall;
+	W25Q64_ReadData(DATA_START_ADDRESS  + IndexTable_Typedef.DataOffset, DataBuf, PixelNum / 8);
+	
+	LCD_SetWindow(x, y, x + IndexTable_Typedef.Wide, y + IndexTable_Typedef.Tall);
+	GPIO_WriteBit(LCD_DC_Typedef.GPIOx, LCD_DC_Typedef.GPIO_Pin,Bit_SET);
 	MySPI_SSStart(&LCD_SS_Typedef);
 	
-	for(uint8_t row=0;row<32;row++)
+	for(uint8_t PixelData = 0; PixelData < (PixelNum / 8); PixelData++)
 	{
-		Row_Pixel = (uint16_t )(LCD_Font16x32[Char - ' '][2 * row] << 8)
-							| (uint16_t )LCD_Font16x32[Char - ' '][2 * row + 1];
-		for (uint8_t col=0;col<16;col++)
+		for(uint8_t i = 0; i < 8; i++)
 		{
-			if (Row_Pixel & (0x8000>>col))
+			if (DataBuf[PixelData] & (0x80>>i))
 			{
 				LCD_WriteColorData(color);
 			}else
 			{
-				LCD_WriteColorData(0x0000);
+				LCD_WriteColorData(BackgroundColor);
 			}
 		}
 	}
 	MySPI_SSStop(&LCD_SS_Typedef);
 }
 
-/*ÏÔÊ¾×Ö·û´®
-	²ÎÊı1£ººá×ø±êÆğÊ¼×ø±ê
-	²ÎÊı2£º×İ×ø±êÆğÊ¼×ø±ê
-	²ÎÊı3£ºÏÔÊ¾µÄ×Ö·û´®,¸ù¾İASCIIÂë
-	²ÎÊı4£ºÏñËØÑÕÉ«
+/*æ˜¾ç¤ºå­—ç¬¦ä¸²
+	å‚æ•°1ï¼šæ¨ªåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°2ï¼šçºµåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°3ï¼šæ˜¾ç¤ºçš„å­—ç¬¦ä¸²
+	å‚æ•°4ï¼šåƒç´ é¢œè‰²
+	å‚æ•°5ï¼šèƒŒæ™¯é¢œè‰²
 */
-void LCD_ShowString(uint16_t x, uint16_t y, char *Char, uint16_t color)
+void LCD_ShowString(uint16_t x, uint16_t y, char *utf8, uint16_t color, uint16_t BackgroundColor)
 {
-	for(uint8_t i = 0;Char[i] != '\0';i++)
+	uint16_t X_Offset = 0;
+	
+	for(uint8_t i = 0;utf8[i] != '\0';i ++)
 	{
-		LCD_ShowChar(x + (i * 16), y, Char[i],color);
+		LCD_ShowChar(x + X_Offset, y, &utf8[i], color, BackgroundColor);
+		if(UTF8Char_length != 0)
+		{
+			i += UTF8Char_length - 1;
+		}
+		X_Offset += IndexTable_Typedef.Wide;
 	}
 }
 
-/*ÏÔÊ¾ÎŞ·ûºÅÊı×Ö
-	²ÎÊı1£ººá×ø±êÆğÊ¼×ø±ê
-	²ÎÊı2£º×İ×ø±êÆğÊ¼×ø±ê
-	²ÎÊı3£ºÏÔÊ¾µÄÊı×Ö,¸ù¾İASCIIÂë
-	²ÎÊı4£ºÏñËØÑÕÉ«
+/*æ˜¾ç¤ºæ— ç¬¦å·æ•°å­—
+	å‚æ•°1ï¼šæ¨ªåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°2ï¼šçºµåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°3ï¼šæ˜¾ç¤ºçš„æ•°å­—,æ ¹æ®ASCIIç 
+	å‚æ•°4ï¼šåƒç´ é¢œè‰²
+	å‚æ•°5ï¼šèƒŒæ™¯é¢œè‰²
 */
-void LCD_ShowUnsignNum(uint16_t x, uint16_t y, uint32_t Num, uint16_t color)
+void LCD_ShowUnsigNum(uint16_t x, uint16_t y, uint32_t Num, uint16_t color,  uint16_t BackgroundColor)
 {
 	uint8_t Num_length;
 	uint32_t Places;
 	uint32_t num;
+	char Digit[2];
 	
+	
+	Digit[1] = '\0';
 	if(Num == 0)
 	{
-		LCD_ShowChar(x,y,'0',color);
+		Digit[0] = '0';
+		LCD_ShowChar(x, y, Digit, color, BackgroundColor);
 	}else
 	{
 		num = Num;
@@ -356,79 +405,20 @@ void LCD_ShowUnsignNum(uint16_t x, uint16_t y, uint32_t Num, uint16_t color)
 			{
 				Places *= 10;
 			}
-			LCD_ShowChar(x + (i * 16), y, ((Num / Places) % 10) + '0',color);
+			Digit[0] = ((Num / Places) % 10) + '0';
+			LCD_ShowChar(x + (i * 16), y, Digit, color, BackgroundColor);
 		}
 	}
 }
 
-/*ÏÔÊ¾ºº×Ö
-	²ÎÊı1£ººá×ø±êÆğÊ¼×ø±ê
-	²ÎÊı2£º×İ×ø±êÆğÊ¼×ø±ê
-	²ÎÊı3£ºÏÔÊ¾µÄºº×Ö,ÓÃÊı×é´æ´¢
-	²ÎÊı4£ºÏñËØÑÕÉ«
+/*æ˜¾ç¤º32*64çš„æ—¶é’Ÿæ•°å­—
+	å‚æ•°1ï¼šæ¨ªåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°2ï¼šçºµåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°3ï¼šæ˜¾ç¤ºçš„æ•°å­—
+	å‚æ•°4ï¼šåƒç´ é¢œè‰²
+	å‚æ•°5ï¼šèƒŒæ™¯é¢œè‰²
 */
-void LCD_ShowChinese(uint16_t x, uint16_t y, uint8_t ZW[], uint16_t color)
-{
-	uint32_t Row_Pixel;
-	uint16_t Indexes_num;
-	uint8_t Fleg_Indexes;
-	uint8_t ZW_CharLength;
-	uint8_t ZW_Num;
-	
-	for(ZW_CharLength = 0;ZW[ZW_CharLength] != '\0';ZW_CharLength++);
-	
-	for(ZW_Num = 0;ZW_Num < (ZW_CharLength / 2); ZW_Num++)
-	{
-		Fleg_Indexes = 0;
-		
-		for(Indexes_num = 0;LCD_ZWFont32x32[Indexes_num].Indexes[0] != 0x00;Indexes_num++)
-		{
-			if((LCD_ZWFont32x32[Indexes_num].Indexes[0] == ZW[(ZW_Num * 2)]) && (LCD_ZWFont32x32[Indexes_num].Indexes[1] == ZW[(ZW_Num * 2) + 1]))
-			{
-				Fleg_Indexes = 1;
-				break;
-			}
-		}
-		
-		LCD_SetWindow(x, y, x + 32, y + 32);
-		GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
-		MySPI_SSStart(&LCD_SS_Typedef);
-		
-		if(Fleg_Indexes == 0)
-		{
-			LCD_ShowString(x + (ZW_Num * 32), y, "??",0xffff);
-		}else
-		{
-			for(uint8_t row=0;row<32;row++)
-			{
-				Row_Pixel = (uint32_t )(LCD_ZWFont32x32[Indexes_num].Data[4 * row] << 24)
-									| (uint32_t )(LCD_ZWFont32x32[Indexes_num].Data[4 * row + 1] << 16)
-									| (uint32_t )(LCD_ZWFont32x32[Indexes_num].Data[4 * row + 2] << 8)
-									| (uint32_t ) LCD_ZWFont32x32[Indexes_num].Data[4 * row + 3];
-				
-				for (uint8_t col=0;col<32;col++)
-				{
-					if (Row_Pixel & (0x80000000>>col))
-					{
-						LCD_WriteColorData(color);
-					}else
-					{
-						LCD_WriteColorData(0x0000);
-					}
-				}
-			}
-		}
-		MySPI_SSStop(&LCD_SS_Typedef);
-	}
-}
-
-/*ÏÔÊ¾32*64µÄÊ±ÖÓÊı×Ö
-	²ÎÊı1£ººá×ø±êÆğÊ¼×ø±ê
-	²ÎÊı2£º×İ×ø±êÆğÊ¼×ø±ê
-	²ÎÊı3£ºÏÔÊ¾µÄÊı×Ö
-	²ÎÊı4£ºÏñËØÑÕÉ«
-*/
-void LCD_ShowTimeNum(uint16_t x, uint16_t y, uint8_t Num, uint16_t color)
+void LCD_ShowTimeNum(uint16_t x, uint16_t y, uint8_t Num, uint16_t color,  uint16_t BackgroundColor)
 {
 	uint32_t Row_Pixel;
 	
@@ -449,10 +439,40 @@ void LCD_ShowTimeNum(uint16_t x, uint16_t y, uint8_t Num, uint16_t color)
 				LCD_WriteColorData(color);
 			}else
 			{
-				LCD_WriteColorData(0x0000);
+				LCD_WriteColorData(BackgroundColor);
 			}
 		}
 	}
 	MySPI_SSStop(&LCD_SS_Typedef);
 }
 
+/*æ˜¾ç¤ºå›¾æ¡ˆ
+	å‚æ•°1ï¼šæ¨ªåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°2ï¼šçºµåæ ‡èµ·å§‹åæ ‡
+	å‚æ•°3ï¼šæ¨ªåæ ‡æˆªè‡³åæ ‡
+	å‚æ•°4ï¼šçºµåæ ‡æˆªè‡³åæ ‡
+	å‚æ•°5ï¼šå›¾æ¡ˆå·
+	å‚æ•°6ï¼šåƒç´ é¢œè‰²
+	å‚æ•°5ï¼šèƒŒæ™¯é¢œè‰²
+*/
+void LCD_ShowPattern(uint16_t x, uint16_t y,  uint16_t Stop_x, uint16_t Stop_y, uint8_t PatternNum, uint16_t color,  uint16_t BackgroundColor)
+{
+	LCD_SetWindow(x, y, Stop_x, Stop_y);
+	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
+	MySPI_SSStart(&LCD_SS_Typedef);
+	
+	for(uint8_t DataSub = 0; DataSub < ((Stop_x - x) * (Stop_y - y)) / 8; DataSub++)
+	{
+		for(uint8_t i = 0; i < 8 ; i++)
+		{
+			if (LCD_Pattern16x32[PatternNum][DataSub] & (0x80>>i))
+			{
+				LCD_WriteColorData(color);
+			}else
+			{
+				LCD_WriteColorData(BackgroundColor);
+			}
+		}
+	}
+	MySPI_SSStop(&LCD_SS_Typedef);
+}

@@ -30,6 +30,5 @@
 .\objects\lcd.o: .\Library\misc.h
 .\objects\lcd.o: Hardware\MySPI.h
 .\objects\lcd.o: .\Software\SYSTime.h
-.\objects\lcd.o: Hardware\LCD.h
-.\objects\lcd.o: Hardware\MyRTC.h
 .\objects\lcd.o: Hardware\LCD_Data.h
+.\objects\lcd.o: Hardware\W25Q64.h

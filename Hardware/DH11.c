@@ -2,22 +2,27 @@
 #include "SYSTime.h"
 #include "Time.h"
 
-uint16_t DH11_Status = 0;
+//DH11ÂºïËÑöÈÖçÁΩÆ
+const GPIO_Pin_InitTypedef DH11_IO_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOA,
+																							.GPIOx = (GPIO_TypeDef *)GPIOA,
+																							.GPIO_Pin = GPIO_Pin_1};
+
+volatile uint16_t DH11_Status = 0;
 uint8_t DH11_Data[5] = {0};
 float TemperatureData = 0;
 float HumidityData = 0;
 
-//≥ı ºªØ
+//ÂàùÂßãÂåñ
 void DH11_Init(void)
 {
-	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA,ENABLE);
+	RCC_APB2PeriphClockCmd(DH11_IO_Typedef.RCC_APB2Periph,ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_AFIO,ENABLE);
 	
 	GPIO_InitTypeDef GPIO_InitStructure;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_1;
+	GPIO_InitStructure.GPIO_Pin = DH11_IO_Typedef.GPIO_Pin;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOA,&GPIO_InitStructure);
+	GPIO_Init(DH11_IO_Typedef.GPIOx,&GPIO_InitStructure);
 	
 	GPIO_EXTILineConfig(GPIO_PortSourceGPIOA,GPIO_PinSource1);
 	
@@ -31,149 +36,169 @@ void DH11_Init(void)
 	NVIC_InitTypeDef NVIC_InitStructure;
 	NVIC_InitStructure.NVIC_IRQChannel = EXTI1_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
 	NVIC_Init(&NVIC_InitStructure);
 	
-	GPIO_WriteBit(GPIOA,GPIO_Pin_1,Bit_SET);
+	GPIO_WriteBit(DH11_IO_Typedef.GPIOx,DH11_IO_Typedef.GPIO_Pin,Bit_SET);
+	
+	SYSTime_Delayms(1000);
 }
 
-//∂¡»°DH11 ˝æ›
+//ËØªÂèñDH11Êï∞ÊçÆ
 void DH11_ReadData(void)
 {
 	static uint32_t RecordTime_ms;
 	
 	switch(DH11_Status)
 	{
-		//÷˜ª˙¿≠µÕ£¨ø™ º
-		case 0:for(uint8_t i = 0; i < 5; i++)
-					{
-						DH11_Data[i] = 0x00;
-					}
-					GPIO_WriteBit(GPIOA,GPIO_Pin_1,Bit_RESET);
-					RecordTime_ms = SYSTime_Getms();
-					DH11_Status = 1;
-					break;
-		//µΩ¥Ô ±º‰÷˜ª˙¿≠∏ﬂ£¨ Õ∑≈
-		case 1:if(SYSTime_Getms() - RecordTime_ms >= 18)
-					{
-						if(SYSTime_Getms() - RecordTime_ms <= 30)
-						{
-							DH11_Status = 2;
-							GPIO_WriteBit(GPIOA,GPIO_Pin_1,Bit_SET);
-							Time_Delayus(13);
-						}else
-							{
-								DH11_Status = 0;
-							}
-					}
-					break;
-		case 2:break;
-		case 3:break;
-		case 4:break;
-		case 5:break;
-		//¥¶¿Ì ˝æ›
-		case 6:if(DH11_Data[0] + DH11_Data[1] + DH11_Data[2] + DH11_Data[3] == DH11_Data[4])
-		{
-			TemperatureData = DH11_Data[0] * 1.0 + DH11_Data[1] / 10.0;
-			HumidityData = DH11_Data[2] * 1.0 + DH11_Data[3] / 10.0;
-			DH11_Status = 0;
-		}else
-		{
-			DH11_Status = 0;
-		}
-					 break;
+		//‰∏ªÊú∫Êãâ‰ΩéÔºåÂºÄÂßã
+		case 0:
+			for(uint8_t i = 0; i < 5; i++)
+			{
+				DH11_Data[i] = 0x00;
+			}
+			GPIO_WriteBit(DH11_IO_Typedef.GPIOx,DH11_IO_Typedef.GPIO_Pin,Bit_SET);
+			Time_Delayus(2);
+			GPIO_WriteBit(DH11_IO_Typedef.GPIOx,DH11_IO_Typedef.GPIO_Pin,Bit_RESET);
+			RecordTime_ms = SYSTime_Getms();
+			DH11_Status = 1;
+			break;
+		//Âà∞ËææÊó∂Èó¥‰∏ªÊú∫ÊãâÈ´òÔºåÈáäÊîæ
+		case 1:
+			if(SYSTime_Getms() - RecordTime_ms >= 18)
+			{
+				GPIO_WriteBit(DH11_IO_Typedef.GPIOx,DH11_IO_Typedef.GPIO_Pin,Bit_SET);
+				DH11_Status = 2;
+			}
+			break;
+		//Â§ÑÁêÜÊï∞ÊçÆ
+		case 7:
+			if(DH11_Data[0] + DH11_Data[1] + DH11_Data[2] + DH11_Data[3] == DH11_Data[4])
+			{
+				HumidityData = DH11_Data[0] * 1.0 + DH11_Data[1] / 10.0;
+				TemperatureData = DH11_Data[2] * 1.0 + DH11_Data[3] / 10.0;
+				DH11_Status = 0;
+			}else
+				{
+					DH11_Status = 0;
+				}
+			break;
+		default:break;
 	}
 }
 
-uint8_t DH11_GetTemData(void)
+float DH11_GetTempData(void)
 {
 	return TemperatureData;
 }
 
-uint8_t DH11_GetHumData(void)
+float DH11_GetHumData(void)
 {
 	return HumidityData;
 }
 
 void EXTI1_IRQHandler(void)
 {
-	uint8_t EXTI1_Filg;// 0:œ¬Ωµ—ÿ 1:…œ…˝—ÿ
+	uint8_t EXTI1_Flag;// 0:‰∏ãÈôçÊ≤ø 1:‰∏äÂçáÊ≤ø
 	static uint16_t RecordTime_us;
 	static uint8_t Data_BitNum = 0;
 	
-	if(GPIO_ReadInputDataBit(GPIOA,GPIO_Pin_1) == Bit_RESET)
+	if(GPIO_ReadInputDataBit(DH11_IO_Typedef.GPIOx,DH11_IO_Typedef.GPIO_Pin) == Bit_RESET)
 	{
-		EXTI1_Filg = 0;
+		EXTI1_Flag = 0;
 	}else
 	{
-		EXTI1_Filg = 1;
+		EXTI1_Flag = 1;
 	}
 	
 	switch(DH11_Status)
 	{
-		case 0:break;
-		case 1:break;
-		//¥”ª˙ªÿ”¶µÕ
-		case 2:if(EXTI1_Filg == 0)
+		//‰ªéÊú∫ÂõûÂ∫î‰Ωé
+		case 2:
+			if(EXTI1_Flag == 0)
+			{
+				RecordTime_us = Time_GetTimeus();
+			}else if((Time_GetTimeus() - RecordTime_us >= 78) && (Time_GetTimeus() - RecordTime_us <= 88))
+				{
+					RecordTime_us = Time_GetTimeus();
+					DH11_Status = 3;
+				}else
 					{
+						DH11_Status = 0;
+					}
+			break;
+		//‰ªéÊú∫ÂõûÂ∫îÈ´ò
+		case 3:
+			if(EXTI1_Flag == 0)
+			{
+				if((Time_GetTimeus() - RecordTime_us >= 80) && (Time_GetTimeus() - RecordTime_us <= 92))
+				{
+					RecordTime_us = Time_GetTimeus();
+					DH11_Status = 4;
+				}else
+					{
+						DH11_Status = 0;
+					}
+			}
+			break;
+		//‰ªéÊú∫ÂõûÂ∫î1BitÊï∞ÊçÆÂºÄÂßã
+		case 4:
+			if(EXTI1_Flag == 1)
+			{
+				if((Time_GetTimeus() - RecordTime_us >= 50) && (Time_GetTimeus() - RecordTime_us <= 58))
+				{
+					RecordTime_us = Time_GetTimeus();
+					DH11_Status = 5;
+				}else
+					{
+						Data_BitNum = 0;
+						DH11_Status = 0;
+					}
+			}
+			break;
+		//1BitÊï∞ÊçÆ
+		case 5:
+			if(EXTI1_Flag == 0)
+			{
+				if(Time_GetTimeus() - RecordTime_us <= 40)
+				{
+					Data_BitNum++;
+					RecordTime_us = Time_GetTimeus();
+					DH11_Status = 4;
+				}else if(Time_GetTimeus() - RecordTime_us <= 80)
+					{
+						DH11_Data[Data_BitNum / 8] |= (0x80 >> (Data_BitNum % 8));
+						Data_BitNum++;
 						RecordTime_us = Time_GetTimeus();
-					}else if((Time_GetTimeus() - RecordTime_us >= 78) && (Time_GetTimeus() - RecordTime_us <= 88))
-						{
-							DH11_Status = 3;
-							RecordTime_us = Time_GetTimeus();
-						}else
-							{
-								DH11_Status = 0;
-							}
-					break;
-		//¥”ª˙ªÿ”¶∏ﬂ
-		case 3:if(EXTI1_Filg == 0)
+						DH11_Status = 4;
+					}else
 					{
-						if((Time_GetTimeus() - RecordTime_us >= 80) && (Time_GetTimeus() - RecordTime_us <= 92))
-						{
-							DH11_Status = 4;
-							RecordTime_us = Time_GetTimeus();
-						}else
-							{
-								DH11_Status = 0;
-							}
+						Data_BitNum = 0;
+						DH11_Status = 0;
 					}
-					 break;
-		//¥”ª˙ªÿ”¶1Bit ˝æ›ø™ º
-		case 4:if(EXTI1_Filg == 1)
-					{
-						if((Time_GetTimeus() - RecordTime_us >= 50) && (Time_GetTimeus() - RecordTime_us <= 60))
-						{
-							DH11_Status = 5;
-							RecordTime_us = Time_GetTimeus();
-						}else
-							{
-								DH11_Status = 0;
-							}
-					}
-					 break;
-		//1Bit ˝æ›
-		case 5:if(EXTI1_Filg == 0)
-					{
-						if((Time_GetTimeus() - RecordTime_us >= 26) && (Time_GetTimeus() - RecordTime_us <= 28))
-						{
-							Data_BitNum++;
-							DH11_Status = 4;
-						}else
-							{
-								DH11_Data[Data_BitNum / 8] |= (0x80 >> (Data_BitNum % 8));
-								Data_BitNum++;
-								DH11_Status = 4;
-							}
-						if(Data_BitNum >= 40)
-						{
-							Data_BitNum = 0;
-							DH11_Status = 6;
-						}
-					}
-					 break;
-		case 6:break;
+			}
+			if(Data_BitNum >= 40)
+			{
+				Data_BitNum = 0;
+				RecordTime_us = Time_GetTimeus();
+				DH11_Status = 6;
+			}
+			break;
+		//‰ªéÊú∫ÁªìÊùüÈáäÊîæ
+		case 6:
+			if(EXTI1_Flag == 1)
+			{
+				if((Time_GetTimeus() - RecordTime_us >= 52) && (Time_GetTimeus() - RecordTime_us <= 56))
+				{
+					DH11_Status = 7;
+				}else
+				{
+					DH11_Status = 0;
+				}
+			}
+			break;
+		default:break;
 	}
 	
 	EXTI_ClearITPendingBit(EXTI_Line1);
