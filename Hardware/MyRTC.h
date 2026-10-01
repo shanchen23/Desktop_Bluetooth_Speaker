@@ -15,5 +15,6 @@ typedef struct
 void MyRTC_Init(void);
 void MyRTC_SetTime(TimeDateTypedef *SetTime);
 TimeDateTypedef MyRTC_ReadTime(void);
-
+uint32_t MyRTC_GetCounter(void);
+	
 #endif

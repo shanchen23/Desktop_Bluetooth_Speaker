@@ -451,21 +451,21 @@ void LCD_ShowTimeNum(uint16_t x, uint16_t y, uint8_t Num, uint16_t color,  uint1
 	参数2：纵坐标起始坐标
 	参数3：横坐标截至坐标
 	参数4：纵坐标截至坐标
-	参数5：图案号
+	参数5：图案数组
 	参数6：像素颜色
 	参数5：背景颜色
 */
-void LCD_ShowPattern(uint16_t x, uint16_t y,  uint16_t Stop_x, uint16_t Stop_y, uint8_t PatternNum, uint16_t color,  uint16_t BackgroundColor)
+void LCD_ShowPattern(uint16_t x, uint16_t y,  uint16_t Stop_x, uint16_t Stop_y,const uint8_t *Pattern, uint16_t color,  uint16_t BackgroundColor)
 {
 	LCD_SetWindow(x, y, Stop_x, Stop_y);
 	GPIO_WriteBit(LCD_DC_Typedef.GPIOx,LCD_DC_Typedef.GPIO_Pin,Bit_SET);
 	MySPI_SSStart(&LCD_SS_Typedef);
 	
-	for(uint8_t DataSub = 0; DataSub < ((Stop_x - x) * (Stop_y - y)) / 8; DataSub++)
+	for(uint16_t DataSub = 0; DataSub < ((Stop_x - x) * (Stop_y - y)) / 8; DataSub++)
 	{
 		for(uint8_t i = 0; i < 8 ; i++)
 		{
-			if (LCD_Pattern16x32[PatternNum][DataSub] & (0x80>>i))
+			if (Pattern[DataSub] & (0x80>>i))
 			{
 				LCD_WriteColorData(color);
 			}else

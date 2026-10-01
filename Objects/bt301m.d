@@ -32,3 +32,5 @@
 .\objects\bt301m.o: Hardware\BT301M.h
 .\objects\bt301m.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
 .\objects\bt301m.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\stdio.h
+.\objects\bt301m.o: Hardware\LCD.h
+.\objects\bt301m.o: Hardware\MyRTC.h

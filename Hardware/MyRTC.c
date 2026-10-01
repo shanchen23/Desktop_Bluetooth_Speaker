@@ -89,3 +89,12 @@ TimeDateTypedef MyRTC_ReadTime(void)
 	
 	return ReadTime;
 }
+
+/*
+	读取RTC实时时钟的当前时间的时间戳
+	返回：时间戳
+*/
+uint32_t MyRTC_GetCounter(void)
+{
+	return (uint32_t )(RTC_GetCounter() + 8 * 60 * 60);
+}

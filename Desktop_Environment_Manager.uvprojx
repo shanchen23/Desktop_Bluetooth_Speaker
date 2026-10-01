@@ -690,6 +690,26 @@
               <FilePath>.\Hardware\MySPI.h</FilePath>
             </File>
             <File>
+              <FileName>MyRTC.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\MyRTC.c</FilePath>
+            </File>
+            <File>
+              <FileName>MyRTC.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\MyRTC.h</FilePath>
+            </File>
+            <File>
+              <FileName>MyI2C.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\MyI2C.c</FilePath>
+            </File>
+            <File>
+              <FileName>MyI2C.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\MyI2C.h</FilePath>
+            </File>
+            <File>
               <FileName>LCD.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\LCD.c</FilePath>
@@ -703,16 +723,6 @@
               <FileName>LCD_Data.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Hardware\LCD_Data.h</FilePath>
-            </File>
-            <File>
-              <FileName>MyRTC.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\MyRTC.c</FilePath>
-            </File>
-            <File>
-              <FileName>MyRTC.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\MyRTC.h</FilePath>
             </File>
             <File>
               <FileName>DH11.c</FileName>
@@ -758,6 +768,11 @@
               <FileName>BT301M.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Hardware\BT301M.h</FilePath>
+            </File>
+            <File>
+              <FileName>LCD_Data.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\LCD_Data.c</FilePath>
             </File>
           </Files>
         </Group>

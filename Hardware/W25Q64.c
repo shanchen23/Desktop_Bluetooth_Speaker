@@ -13,6 +13,7 @@ const GPIO_Pin_InitTypedef W25Q64_SS_Typedef = {.RCC_APB2Periph = RCC_APB2Periph
 void W25Q64_Init(void)
 {
 	MySPI_Init(&W25Q64_SS_Typedef);
+	W25Q64_GetCharNum();
 }
 
 //写使能
@@ -105,7 +106,7 @@ void W25Q64_ReadData(uint32_t Address, uint8_t *dataArray, uint32_t Count)
 	MySPI_SwapByte((uint8_t )(Address >> 8));
 	MySPI_SwapByte((uint8_t )Address);
 	
-	for(uint16_t i = 0; i < Count; i++)
+	for(uint32_t i = 0; i < Count; i++)
 	{
 		dataArray[i] = MySPI_SwapByte(W25Q64_DUMMY_BYTE);
 	}
@@ -113,7 +114,7 @@ void W25Q64_ReadData(uint32_t Address, uint8_t *dataArray, uint32_t Count)
 	MySPI_SSStop(&W25Q64_SS_Typedef);
 }
 
-/*获取字库字符数量
+/*获取字库字符数量，并将字符数量提供给后续函数
 返回：字符数量
 */
 uint32_t W25Q64_GetCharNum(void)
@@ -139,9 +140,9 @@ void W25Q64_GetIndexTable(W25Q64_IndexTableTypedef *IndexTable)
 	uint8_t Index_Flag = 0;// 1:找到了  0:没找到
 	uint8_t ExtractArray[10];
 	uint16_t Mid_CodePoint;
-	uint32_t Mid;
-	uint32_t Left;
-	uint32_t Right;
+	int32_t Mid;
+	int32_t Left;
+	int32_t Right;
 	
 	Left = 0;
 	Right = CharNum - 1;

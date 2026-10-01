@@ -31,6 +31,7 @@
 .\objects\main.o: .\Hardware\Time.h
 .\objects\main.o: .\Hardware\LCD.h
 .\objects\main.o: .\Hardware\MyRTC.h
+.\objects\main.o: .\Hardware\LCD_Data.h
 .\objects\main.o: .\Software\SYSTime.h
 .\objects\main.o: .\Software\Key.h
 .\objects\main.o: .\Hardware\DH11.h
