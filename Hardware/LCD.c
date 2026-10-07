@@ -330,8 +330,8 @@ void LCD_ShowChar(uint16_t x, uint16_t y, char *utf8, uint16_t color, uint16_t B
 	
 	LCD_SetWindow(x, y, x + IndexTable_Typedef.Wide, y + IndexTable_Typedef.Tall);
 	GPIO_WriteBit(LCD_DC_Typedef.GPIOx, LCD_DC_Typedef.GPIO_Pin,Bit_SET);
-	MySPI_SSStart(&LCD_SS_Typedef);
 	
+	MySPI_SSStart(&LCD_SS_Typedef);
 	for(uint8_t PixelData = 0; PixelData < (PixelNum / 8); PixelData++)
 	{
 		for(uint8_t i = 0; i < 8; i++)
@@ -359,7 +359,7 @@ void LCD_ShowString(uint16_t x, uint16_t y, char *utf8, uint16_t color, uint16_t
 {
 	uint16_t X_Offset = 0;
 	
-	for(uint8_t i = 0;utf8[i] != '\0';i ++)
+	for(uint8_t i = 0;utf8[i] != '\0';i++)
 	{
 		LCD_ShowChar(x + X_Offset, y, &utf8[i], color, BackgroundColor);
 		if(UTF8Char_length != 0)
@@ -476,3 +476,120 @@ void LCD_ShowPattern(uint16_t x, uint16_t y,  uint16_t Stop_x, uint16_t Stop_y,c
 	}
 	MySPI_SSStop(&LCD_SS_Typedef);
 }
+
+/*返回字符串X轴的像素宽度
+	参数：被测字符串
+	返回：X轴的像素宽度
+*/
+uint16_t LCD_GetString_X_Offset(char *Data)
+{
+	uint16_t X_Offset = 0;
+	
+	for(uint16_t i = 0; Data[i] != '\0'; i++)
+	{
+		IndexTable_Typedef.CodePoint = LCD_UTF8Decode(&Data[i]);
+		W25Q64_GetIndexTable(&IndexTable_Typedef);
+		
+		X_Offset += IndexTable_Typedef.Wide;
+		
+		if(UTF8Char_length != 0)
+		{
+				i += UTF8Char_length - 1;
+		}
+	}
+	return X_Offset;
+}
+
+
+/*显示字符的一部分，用于左右滚动显示
+	参数1：横坐标起始坐标
+	参数2：纵坐标起始坐标
+	参数3：显示的字符（只支持UTF-8）
+	参数4：从字符第几列开始显示
+	参数5：显示多少列
+	参数6：像素颜色
+	参数7：背景颜色
+*/
+void LCD_ShowPortionChar(uint16_t x, uint16_t y, char *utf8, uint16_t StartColumn, uint16_t ShowWide, uint16_t color, uint16_t BackgroundColor)
+{
+	uint16_t PixelNum;
+	uint8_t DataBuf[256] = {0};
+	
+	IndexTable_Typedef.CodePoint = LCD_UTF8Decode(utf8);
+	W25Q64_GetIndexTable(&IndexTable_Typedef);
+	
+	PixelNum = IndexTable_Typedef.Wide * IndexTable_Typedef.Tall;
+	W25Q64_ReadData(DATA_START_ADDRESS + IndexTable_Typedef.DataOffset, DataBuf, PixelNum / 8);
+	
+	
+	LCD_SetWindow(x, y, x + ShowWide, y + IndexTable_Typedef.Tall);
+	GPIO_WriteBit(LCD_DC_Typedef.GPIOx, LCD_DC_Typedef.GPIO_Pin, Bit_SET);
+	MySPI_SSStart(&LCD_SS_Typedef);
+	for(uint16_t row = 0; row < IndexTable_Typedef.Tall; row++)
+	{
+		for(uint16_t Col = StartColumn; Col < StartColumn + ShowWide; Col++)
+		{
+			uint8_t byte = DataBuf[row * (IndexTable_Typedef.Wide / 8) + Col / 8];
+			if(byte & (0x80 >> (Col % 8)))
+			{
+				LCD_WriteColorData(color);
+			}
+			else
+			{
+				LCD_WriteColorData(BackgroundColor);
+			}
+		}
+	}
+	MySPI_SSStop(&LCD_SS_Typedef);
+}
+
+/*滚动显示字符串，调用一次刷新一帧
+	参数1：横坐标起始坐标
+	参数2：纵坐标起始坐标
+	参数3：滚动像素显示的宽度
+	参数4：字符串
+	参数5：滚动偏移量（给一个变量，每次执行就++并回绕）
+	参数6：像素颜色
+	参数7：背景颜色
+*/
+void LCD_ShowStringRoll(uint16_t x, uint16_t y, uint16_t ShowWide, char *Data, uint16_t *offset, uint16_t color, uint16_t BackgroundColor)
+{
+	int16_t OriginalOffset = 0;
+	int16_t Left;
+	int16_t Right;
+	uint16_t char_X_Offset;
+	uint16_t char_StartColumn;
+	uint16_t char_ShowWide;
+	
+	
+	for(uint16_t i = 0;Data[i] != '\0';i++)
+	{
+		IndexTable_Typedef.CodePoint = LCD_UTF8Decode(&Data[i]);
+		W25Q64_GetIndexTable(&IndexTable_Typedef);
+		
+		Left  = OriginalOffset - *offset;
+		Right = OriginalOffset + IndexTable_Typedef.Wide - *offset;
+
+		if(Right > 0 && Left < ShowWide)
+		{
+			char_X_Offset    = (Left < 0) ? 0 : Left;
+			char_StartColumn = (Left < 0) ? (-Left) : 0;
+			char_ShowWide    = ((Right > ShowWide) ? ShowWide : Right) - char_X_Offset;
+
+			LCD_ShowPortionChar(x + char_X_Offset, y, &Data[i], char_StartColumn, char_ShowWide, color, BackgroundColor);
+		}
+		
+		if(UTF8Char_length != 0)
+		{
+			i += UTF8Char_length - 1;
+		}
+		OriginalOffset += IndexTable_Typedef.Wide;
+	}
+	
+	(*offset)++;
+	if(*offset >= OriginalOffset)
+	{
+		*offset = 0;
+	}
+}
+

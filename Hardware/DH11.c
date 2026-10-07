@@ -7,10 +7,12 @@ const GPIO_Pin_InitTypedef DH11_IO_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_G
 																							.GPIOx = (GPIO_TypeDef *)GPIOA,
 																							.GPIO_Pin = GPIO_Pin_1};
 
-volatile uint16_t DH11_Status = 0;
+volatile uint8_t DH11_Status = 0;
+volatile uint8_t  DH11_Response_Flag = 0;
 uint8_t DH11_Data[5] = {0};
 float TemperatureData = 0;
 float HumidityData = 0;
+
 
 //初始化
 void DH11_Init(void)
@@ -68,8 +70,9 @@ void DH11_ReadData(void)
 		case 1:
 			if(SYSTime_Getms() - RecordTime_ms >= 18)
 			{
-				GPIO_WriteBit(DH11_IO_Typedef.GPIOx,DH11_IO_Typedef.GPIO_Pin,Bit_SET);
-				DH11_Status = 2;
+					GPIO_WriteBit(DH11_IO_Typedef.GPIOx,DH11_IO_Typedef.GPIO_Pin,Bit_SET);  // 主机松开
+					DH11_Response_Flag = 0; 
+					DH11_Status = 2;
 			}
 			break;
 		//处理数据
@@ -119,14 +122,20 @@ void EXTI1_IRQHandler(void)
 			if(EXTI1_Flag == 0)
 			{
 				RecordTime_us = Time_GetTimeus();
-			}else if((Time_GetTimeus() - RecordTime_us >= 78) && (Time_GetTimeus() - RecordTime_us <= 88))
+				DH11_Response_Flag = 1;
+			}
+			else if(DH11_Response_Flag == 1)
+			{
+				if((Time_GetTimeus() - RecordTime_us >= 78) && (Time_GetTimeus() - RecordTime_us <= 88))
 				{
 					RecordTime_us = Time_GetTimeus();
 					DH11_Status = 3;
-				}else
-					{
-						DH11_Status = 0;
-					}
+				}
+				else
+				{
+					DH11_Status = 0;
+				}
+			}
 			break;
 		//从机回应高
 		case 3:
@@ -189,10 +198,11 @@ void EXTI1_IRQHandler(void)
 		case 6:
 			if(EXTI1_Flag == 1)
 			{
-				if((Time_GetTimeus() - RecordTime_us >= 52) && (Time_GetTimeus() - RecordTime_us <= 56))
+				if((Time_GetTimeus() - RecordTime_us >= 40) && (Time_GetTimeus() - RecordTime_us <= 70))
 				{
 					DH11_Status = 7;
-				}else
+				}
+				else
 				{
 					DH11_Status = 0;
 				}

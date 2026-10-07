@@ -23,6 +23,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x_it.h"
+#include "Key.h"
 
 /** @addtogroup STM32F10x_StdPeriph_Template
   * @{
@@ -136,6 +137,11 @@ void PendSV_Handler(void)
 void SysTick_Handler(void)
 {
 	SYS_Counter++;
+	
+	if(SYS_Counter % 5 == 0)
+	{
+		Key_ALLLongHoldPoll();
+	}
 }
 
 /******************************************************************************/

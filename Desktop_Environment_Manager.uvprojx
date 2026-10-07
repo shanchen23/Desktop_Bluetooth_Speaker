@@ -725,6 +725,11 @@
               <FilePath>.\Hardware\LCD_Data.h</FilePath>
             </File>
             <File>
+              <FileName>LCD_Data.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\LCD_Data.c</FilePath>
+            </File>
+            <File>
               <FileName>DH11.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\DH11.c</FilePath>
@@ -770,9 +775,19 @@
               <FilePath>.\Hardware\BT301M.h</FilePath>
             </File>
             <File>
-              <FileName>LCD_Data.c</FileName>
+              <FileName>MPU6050.c</FileName>
               <FileType>1</FileType>
-              <FilePath>.\Hardware\LCD_Data.c</FilePath>
+              <FilePath>.\Hardware\MPU6050.c</FilePath>
+            </File>
+            <File>
+              <FileName>MPU6050.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\MPU6050.h</FilePath>
+            </File>
+            <File>
+              <FileName>MPU6050_Reg.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\MPU6050_Reg.h</FilePath>
             </File>
           </Files>
         </Group>

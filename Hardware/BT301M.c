@@ -10,10 +10,16 @@ GPIO_Pin_InitTypedef BT301M_ResetPin = {.RCC_APB2Periph = RCC_APB2Periph_GPIOB,
 																					.GPIOx = (GPIO_TypeDef *)GPIOB,
 																					.GPIO_Pin = GPIO_Pin_15};
 BT301M_BTINFO_Typedef BT301M_BTINFO_Data = {0};
+BT301M_LYRIC_Typedef BT301M_LYRIC_Data = {0};
+uint8_t BT301M_MODE_Data = 4;//0:蓝牙模式，1:U盘模式，2:TF卡模式，3:LINEIN 模式，4:待机模式，5:深度休眠模式
+uint8_t BT301M_WARNING_Data = 0;//0：禁用提示音 1：启用提示音
+uint8_t BT301M_AUTOPLAY_Data = 0;//0：关闭蓝牙连接自动播放音乐 1：启用蓝牙连接自动播放音乐
+uint8_t BT301M_LANGID_Data = 0;
+
 char ErrorInformation[50] = {0};
 
-char BT301M_RX_QUEUE[20][128] = {0};
-char BT301M_RX_Buf[128] = {0};
+char BT301M_RX_QUEUE[20][256] = {0};
+char BT301M_RX_Buf[256] = {0};
 uint8_t BT301M_RxWrite = 0;
 uint8_t BT301M_RxRead = 0;
 uint8_t BT301M_RxCount = 0; 
@@ -105,7 +111,7 @@ void BT301M_RXDeQueue(char *OutData)
 //分发接收到的消息，一个队列以'\0'结尾
 void DistributeRXData(void)
 {
-	char RX_Buf[128];
+	char RX_Buf[256];
 
 	while(BT301M_RxCount > 0)
 	{
@@ -117,12 +123,30 @@ void DistributeRXData(void)
 		}else if(strstr(RX_Buf, "BTINFO") != NULL)
 		{
 			BT301M_Dispose_BTINFO(RX_Buf);
+		}else if(strstr(RX_Buf, "<GC>") != NULL 
+						&& strstr(RX_Buf, "</GC>") != NULL 
+						&& strstr(RX_Buf, "<QM>") != NULL 
+						&& strstr(RX_Buf, "</QM>") != NULL) 
+		{
+			BT301M_Dispose_LYRIC(RX_Buf);
+		}else if(strstr(RX_Buf, "MODE") != NULL)
+		{
+			BT301M_Dispose_MODE(RX_Buf);
+		}else if(strstr(RX_Buf, "WARNING") != NULL )
+		{
+			BT301M_Dispose_WARNING(RX_Buf);
+		}else if(strstr(RX_Buf, "AUTOPLAY") != NULL )
+		{
+			BT301M_Dispose_AUTOPLAY(RX_Buf);
+		}else if(strstr(RX_Buf, "LANGID") != NULL )
+		{
+			BT301M_Dispose_LANGID(RX_Buf);
 		}
-		//歌词处理
+		
 	}
 	
-	LCD_WindowClear(0, 208, 320, 240, COLOR_EGGSHELL);
-	LCD_ShowString(0, 208, RX_Buf, COLOR_RED ,COLOR_EGGSHELL);
+//	LCD_WindowClear(0, 208, 320, 240, COLOR_EGGSHELL);
+//	LCD_ShowString(0, 208, RX_Buf, COLOR_RED ,COLOR_EGGSHELL);
 	//for(uint32_t i = 0; i < 100000 ; i++);
 }
 
@@ -191,6 +215,159 @@ void BT301M_Dispose_BTINFO(char *Buf_Data)
 	}
 }
 
+/*处理LYRIC的消息
+	参数：处理的数据存放的首地址
+*/
+void BT301M_Dispose_LYRIC(char *Buf_Data)
+{
+	uint8_t N = 0;
+	uint8_t i = 0;
+	
+	while(Buf_Data[N] != '>' 
+				|| Buf_Data[N - 1] != 'C'
+				|| Buf_Data[N - 2] != 'G' 
+				|| Buf_Data[N - 3] != '<')
+	{
+		if(Buf_Data[N] == '\0')
+		{
+			sprintf(ErrorInformation, "BT301歌词查找失败");
+			return;
+		}
+		N++;
+	}
+	N++;
+	i = 0;
+	
+	while(Buf_Data[N] != '<' 
+				|| Buf_Data[N + 1] != '/'
+				|| Buf_Data[N + 2] != 'G' 
+				|| Buf_Data[N + 3] != 'C' 
+				|| Buf_Data[N + 4] != '>')
+	{
+		if(Buf_Data[N] == '\0')
+		{
+			sprintf(ErrorInformation, "BT301歌词查找失败");
+			return;
+		}
+		BT301M_LYRIC_Data.LYRIC_Libretto[i] = Buf_Data[N];
+		N++;
+		i++;
+	}
+	BT301M_LYRIC_Data.LYRIC_Libretto[i] = '\0';
+	N += 5;
+	i = 0;
+	
+	
+	
+	while(Buf_Data[N] != '>' 
+				|| Buf_Data[N - 1] != 'M'
+				|| Buf_Data[N - 2] != 'Q' 
+				|| Buf_Data[N - 3] != '<')
+	{
+		if(Buf_Data[N] == '\0')
+		{
+			sprintf(ErrorInformation, "BT301歌词查找失败");
+			return;
+		}
+		N++;
+	}
+	N++;
+	i = 0;
+	
+	while(Buf_Data[N] != '<' 
+				|| Buf_Data[N + 1] != '/'
+				|| Buf_Data[N + 2] != 'Q' 
+				|| Buf_Data[N + 3] != 'M' 
+				|| Buf_Data[N + 4] != '>')
+	{
+		if(Buf_Data[N] == '\0')
+		{
+			sprintf(ErrorInformation, "BT301歌词查找失败");
+			return;
+		}
+		BT301M_LYRIC_Data.LYRIC_Name[i] = Buf_Data[N];
+		N++;
+		i++;
+	}
+	BT301M_LYRIC_Data.LYRIC_Name[i] = '\0';
+	N += 5;
+	i = 0;
+}
+
+/*处理MODE的消息
+	参数：处理的数据存放的首地址
+*/
+void BT301M_Dispose_MODE(char *Buf_Data)
+{
+	if(strstr(Buf_Data, "MODE=BT") != NULL)
+	{
+		BT301M_MODE_Data = 0;
+	}else if(strstr(Buf_Data, "MODE=USB") != NULL)
+	{
+		BT301M_MODE_Data = 1;
+	}else if(strstr(Buf_Data, "MODE=SD") != NULL)
+	{
+		BT301M_MODE_Data = 2;
+	}else if(strstr(Buf_Data, "MODE=AUX") != NULL)
+	{
+		BT301M_MODE_Data = 3;
+	}else if(strstr(Buf_Data, "MODE=IDLE") != NULL)
+	{
+		BT301M_MODE_Data = 4;
+	}else if(strstr(Buf_Data, "MODE=SLEEP") != NULL)
+	{
+		BT301M_MODE_Data = 5;
+	}
+}
+
+/*处理WARNING的消息
+	参数：处理的数据存放的首地址
+*/
+void BT301M_Dispose_WARNING(char *Buf_Data)
+{
+	uint8_t N = 0;
+	
+	while(Buf_Data[N] != '=')
+	{
+		N++;
+	}
+	N++;
+	
+	BT301M_WARNING_Data = Buf_Data[N] - '0';
+}
+
+/*处理WARNING的消息
+	参数：处理的数据存放的首地址
+*/
+void BT301M_Dispose_AUTOPLAY(char *Buf_Data)
+{
+	uint8_t N = 0;
+	
+	while(Buf_Data[N] != '=')
+	{
+		N++;
+	}
+	N++;
+	
+	BT301M_AUTOPLAY_Data = Buf_Data[N] - '0';
+}
+
+/*处理LANGID的消息
+	参数：处理的数据存放的首地址
+*/
+void BT301M_Dispose_LANGID(char *Buf_Data)
+{
+	uint8_t N = 0;
+	
+	while(Buf_Data[N] != '=')
+	{
+		N++;
+	}
+	N++;
+	
+	BT301M_LANGID_Data = Buf_Data[N] - '0';
+}
+
 //初始化
 void BT301M_Init(void)
 {
@@ -248,8 +425,13 @@ void BT301M_Init(void)
 	DistributeRXData();
 	
 	
-	BT301M_TXEnQueue("AT+BTINFO=10");
+	BT301M_TXEnQueue("AT+BTINFO=10");//获取播放时间和状态
 	DistributeRXData();
+	BT301M_TXEnQueue("AT+LYRIC=1");//获取歌词
+	DistributeRXData();
+	BT301M_TXEnQueue("AT+MODE");//查询蓝牙模式
+	DistributeRXData();
+	
 }
 
 
@@ -299,7 +481,7 @@ void USART1_IRQHandler(void)
 			RX_N = 0;
 		}else
 		{
-			if(RX_N < 128 - 2)
+			if(RX_N < 256 - 2)
 			{
 				RX_N++;
 			}else

@@ -2,7 +2,7 @@
 #include "Key.h"
 #include "SYSTime.h"
 	
-Key_InitTypedef Key_Switch = {RCC_APB2Periph_GPIOA, GPIOA, GPIO_Pin_0, 3000, 0, 0, 0};
+Key_InitTypedef Key_Switch_Return = {RCC_APB2Periph_GPIOA, GPIOA, GPIO_Pin_0, 3000, 0, 0, 0};
 Key_InitTypedef Key_Up     = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_8, 1000, 0, 0, 0};
 Key_InitTypedef Key_Bown   = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_9, 1000, 0, 0, 0};
 Key_InitTypedef Key_Left   = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_12, 1000, 0, 0, 0};
@@ -59,7 +59,6 @@ void Key_Init(Key_InitTypedef *Key)
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 	
-	Key->KeyStatus = 0;
 	Key->GetKey = 0;
 	Key->Start_time = 0;
 }
@@ -67,7 +66,7 @@ void Key_Init(Key_InitTypedef *Key)
 //初始化
 void Key_ALLInit(void)
 {
-	Key_Init(&Key_Switch);
+	Key_Init(&Key_Switch_Return);
 	Key_Init(&Key_Up);
 	Key_Init(&Key_Bown);
 	Key_Init(&Key_Left);
@@ -75,45 +74,52 @@ void Key_ALLInit(void)
 	Key_Init(&Key_OK);
 }
 
-/*按键状态检测
-  参数：按键引脚参数的结构体
+/*在中断中处理按键状态
+  参数1：按键引脚参数的结构体
+	参数2：当前中断的线路
 */
-void Key_StatusPoll(Key_InitTypedef *Key)
+void Key_IRQHandlerStatus(Key_InitTypedef *Key, uint32_t EXTI_Line)
 {
-	if(GPIO_ReadInputDataBit(Key->GPIOx, Key->GPIO_Pin) == Bit_RESET)
+	EXTI_ClearITPendingBit(EXTI_Line);
+	if(SYSTime_Getms() - Key->LastTime < 20) return;
+
+	Key->LastTime = SYSTime_Getms();
+
+	if(GPIO_ReadInputDataBit(Key->GPIOx ,Key->GPIO_Pin) == 0)
 	{
-		if(Key->KeyStatus == 0)
-		{
-			Key->Start_time = SYSTime_Getms();
-			Key->KeyStatus  = 1;
-		}else if((SYSTime_Getms() - Key->Start_time) > Key->LongTime)
-		{
-			Key->GetKey = 4;
-		}
+		Key->Start_time = SYSTime_Getms();
 	}else
 	{
-		if(Key->KeyStatus == 1)
-		{
-			uint32_t duration = SYSTime_Getms() - Key->Start_time;
-			if(duration >= 10)
-			{
-				Key->GetKey = (duration>Key->LongTime)? 2 : 1;
-			}
-			Key->KeyStatus = 0;
-		}
+		Key->GetKey = ((SYSTime_Getms() - Key->Start_time) > Key->LongTime) ? 2 : 1;
 	}
 }
 
 
-//推进所有按键状态检测
-void Key_ALLStatusPoll(void)
+/*按键长按没松手状态检测
+  参数：按键引脚参数的结构体
+*/
+void Key_LongHoldPoll(Key_InitTypedef *Key)
 {
-	Key_StatusPoll(&Key_Switch);
-	Key_StatusPoll(&Key_Up);
-	Key_StatusPoll(&Key_Bown);
-	Key_StatusPoll(&Key_Left);
-	Key_StatusPoll(&Key_Right);
-	Key_StatusPoll(&Key_OK);
+	if(GPIO_ReadInputDataBit(Key->GPIOx, Key->GPIO_Pin) == Bit_RESET && (SYSTime_Getms() - Key->Start_time) > Key->LongTime)
+	{
+		Key->GetKey = 4;
+	}else if(GPIO_ReadInputDataBit(Key->GPIOx, Key->GPIO_Pin) == Bit_RESET && (SYSTime_Getms() - Key->Start_time) < Key->LongTime)
+	{
+		Key->GetKey = 3;
+	}
+}
+
+
+
+//推进所有按键长按不松手状态检测
+void Key_ALLLongHoldPoll(void)
+{
+	Key_LongHoldPoll(&Key_Switch_Return);
+	Key_LongHoldPoll(&Key_Up);
+	Key_LongHoldPoll(&Key_Bown);
+	Key_LongHoldPoll(&Key_Left);
+	Key_LongHoldPoll(&Key_Right);
+	Key_LongHoldPoll(&Key_OK);
 }
 
 /*返回按键的结果
@@ -133,31 +139,19 @@ uint8_t Key_GetStatus(Key_InitTypedef *Key)
 //中断记录按下的时间和松手的时间
 void EXTI0_IRQHandler(void)
 {
-	if(GPIO_ReadInputDataBit(Key_Switch.GPIOx,Key_Switch.GPIO_Pin) == Bit_RESET)
-	{
-		Key_Switch.Start_time = SYSTime_Getms();
-	}
-	EXTI_ClearITPendingBit(EXTI_Line0);
+	Key_IRQHandlerStatus(&Key_Switch_Return, EXTI_Line0);
 }
 
 void EXTI9_5_IRQHandler(void)
 {
 	if(EXTI_GetFlagStatus(EXTI_Line8))
 	{
-		if(GPIO_ReadInputDataBit(Key_Up.GPIOx,Key_Up.GPIO_Pin) == Bit_RESET)
-		{
-			Key_Up.Start_time = SYSTime_Getms();
-		}
-		EXTI_ClearITPendingBit(EXTI_Line8);
+		Key_IRQHandlerStatus(&Key_Up, EXTI_Line8);
 	}
 	
 	if(EXTI_GetFlagStatus(EXTI_Line9))
 	{
-		if(GPIO_ReadInputDataBit(Key_Bown.GPIOx,Key_Bown.GPIO_Pin) == Bit_RESET)
-		{
-			Key_Bown.Start_time = SYSTime_Getms();
-		}
-		EXTI_ClearITPendingBit(EXTI_Line9);
+		Key_IRQHandlerStatus(&Key_Bown, EXTI_Line9);
 	}
 }
 
@@ -165,28 +159,16 @@ void EXTI15_10_IRQHandler(void)
 {
 	if(EXTI_GetFlagStatus(EXTI_Line12))
 	{
-		if(GPIO_ReadInputDataBit(Key_Left.GPIOx,Key_Left.GPIO_Pin) == Bit_RESET)
-		{
-			Key_Left.Start_time = SYSTime_Getms();
-		}
-		EXTI_ClearITPendingBit(EXTI_Line12);
+		Key_IRQHandlerStatus(&Key_Left, EXTI_Line12);
 	}
 	
 	if(EXTI_GetFlagStatus(EXTI_Line13))
 	{
-		if(GPIO_ReadInputDataBit(Key_Right.GPIOx,Key_Right.GPIO_Pin) == Bit_RESET)
-		{
-			Key_Right.Start_time = SYSTime_Getms();
-		}
-		EXTI_ClearITPendingBit(EXTI_Line13);
+		Key_IRQHandlerStatus(&Key_Right, EXTI_Line13);
 	}
 	
 	if(EXTI_GetFlagStatus(EXTI_Line14))
 	{
-		if(GPIO_ReadInputDataBit(Key_OK.GPIOx,Key_OK.GPIO_Pin) == Bit_RESET)
-		{
-			Key_OK.Start_time = SYSTime_Getms();
-		}
-		EXTI_ClearITPendingBit(EXTI_Line14);
+		Key_IRQHandlerStatus(&Key_OK, EXTI_Line14);
 	}
 }
