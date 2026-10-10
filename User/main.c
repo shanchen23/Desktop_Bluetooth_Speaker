@@ -9,6 +9,7 @@
 #include "DH11.h"
 #include "W25Q64.h"
 #include "BT301M.h"
+#include "MAX17048.h"
 
 void DesktopMode(void);
 void SetMode(void);
@@ -16,8 +17,6 @@ void SetMode_Bluetooth(void);
 void ShowTime(uint16_t x, uint16_t y, TimeDateTypedef *Time, uint16_t color, uint16_t BackgroundColor);
 void ShowTempAndHum(uint16_t x, uint16_t y, uint16_t color, uint16_t BackgroundColor);
 void Showplayer(uint16_t x, uint16_t y, uint16_t color, uint16_t BackgroundColor);
-//void Power_Init(void);
-//void EnterPowerOff(void);
 	
 #define Desktop_Mode   		((uint8_t )0x01)
 #define Set_Mode       		((uint8_t )0x02)
@@ -36,25 +35,31 @@ typedef struct
 
 TimeDateTypedef Time_structure = {1999, 12, 31, 23, 59, 55};
 uint8_t Mode = 0;
-//uint8_t Status = 0;
 uint8_t Key_Status = 0;
 uint8_t Key_Singlelong_Flag = 0; // 0:还没长按 1:长按过了
 uint8_t Key_SwitchReturn_Flag = 0;//防止多个地方取用Key_Switch_Return得不到状态
+uint8_t ShowTempAndHum_Flag = 0xFF;
+uint8_t SOC = 0;
+uint8_t Set_Brightness = 100;
+uint8_t Brightness = 100;
 uint32_t DHT11_ReadTimeFlag = 0;
+uint32_t SOC_ReadTimeFlag = 0;
 
 int main()
 {
+	char BT301M_SOC[20] = {0};
+	
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_2);		
 	
 	Time_Init();
 	SYSTime_Init();
 	MyRTC_Init();
 	DH11_Init();
-	W25Q64_Init();
 	BT301M_Init();
 	Key_ALLInit();
+	W25Q64_Init();
 	LCD_Init();
-//	Power_Init(); 
+	MAX17048_Init(); 
 	
 	MyRTC_SetTime(&Time_structure);
 	LCD_ALLClear(COLOR_EGGSHELL);
@@ -62,16 +67,19 @@ int main()
 	Mode = Desktop_Mode;
 	
 	LCD_ShowPattern(288, 0, 320, 16, LCD_Pattern16x32[2], COLOR_BLACK, COLOR_EGGSHELL);
+	
+	LCD_SetBLBrightnes(Brightness);
 	while(1)
 	{
 		BT301M_SendATCmd();
 		DistributeRXData();
 		
 		Key_SwitchReturn_Flag = Key_GetStatus(&Key_Switch_Return);
-		if(Key_SwitchReturn_Flag == 4)   // 长按电源键松手 → 关机
+		if(Key_SwitchReturn_Flag == 2)//关机
 		{
+			LCD_ALLClear(COLOR_BLACK);
 			Key_SwitchReturn_Flag = 0;
-//			EnterPowerOff();
+			PowerOff();
 		}
 		
 		//Key_ALLLongHoldPoll();
@@ -89,27 +97,36 @@ int main()
     }
 		
 		
+		if(MyRTC_GetCounter() - SOC_ReadTimeFlag >= 5)
+		{
+			SOC_ReadTimeFlag = MyRTC_GetCounter();
+//			SOC = MAX17048_GetSOC();//原始电量
+			SOC = MAX17048_GetSOC() - 10;
+			if (SOC > 200) SOC = 0;
+			SOC = SOC * 100 / 80;
+			sprintf(BT301M_SOC, "AT+HFPBATT=%d",(SOC / 20));
+			BT301M_TXEnQueue(BT301M_SOC);
+			DistributeRXData();
+		}
+		
+		if(Set_Brightness != Brightness)
+		{
+			LCD_SetBLBrightnes(Set_Brightness);
+			Brightness = Set_Brightness; 
+		}
+		
+		
+		
+		
+		
+		
+		
 		
 		//调试信息
 		//LCD_ShowString(100, 150, ErrorInformation, COLOR_RED ,COLOR_EGGSHELL);
+		//LCD_ShowUnsigNum(100, 0, MAX17048_ReadReg(0x04), COLOR_BLACK, COLOR_EGGSHELL);
 	}
 }
-
-//void Power_Init(void)
-//{
-//	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE); // 只开时钟
-//}
-
-//// 彻底关机：黑屏 + 进待机
-//void EnterPowerOff(void)
-//{
-//	LCD_ALLClear(COLOR_BLACK);
-//	SYSTime_Delayms(200);
-//	__disable_irq();
-//	PWR_WakeUpPinCmd(ENABLE);   // 关机前一刻才把 PA0 设为唤醒脚
-//	PWR_EnterSTANDBYMode();
-//}
-
 
 /*显示桌面的时间
 	参数1：横坐标起始坐标
@@ -324,6 +341,7 @@ void Update_DesktopMode(void)
 {
 	LCD_ALLClear(COLOR_EGGSHELL);
 	LCD_ShowPattern(288, 0, 320, 16, LCD_Pattern16x32[2], COLOR_BLACK, COLOR_EGGSHELL);
+	LCD_WindowClear(295, 03, 295 + SOC / 5, 13, COLOR_GREEN);
 	if(BT301M_MODE_Data == 0)
 	{
 		LCD_ShowPattern(90, 192, 90 + 208, 192 + 8, LCD_Pattern8x208[0], COLOR_BLACK, COLOR_EGGSHELL);
@@ -335,17 +353,32 @@ void Update_DesktopMode(void)
 void DesktopMode(void)
 {
 	static uint32_t SPKVOLT_Time;
-	static uint32_t MODE_State = 0;
+	static uint32_t BT301M_MODE_State = 0;
+	static uint8_t ShowSOC = 0;
 	
 	uint16_t SPKVOLT_IntervalTime = 250;
 	
 	Time_structure = MyRTC_ReadTime();
 	
 	//更新不同模式屏幕
-	if(BT301M_MODE_Data != MODE_State)
+	if(BT301M_MODE_Data != BT301M_MODE_State)
 	{
-		MODE_State = BT301M_MODE_Data;
+		BT301M_MODE_State = BT301M_MODE_Data;
 		Update_DesktopMode();
+	}
+	
+	//显示电量
+	if(ShowSOC != SOC)
+	{
+		if(ShowSOC > SOC)
+		{
+			LCD_WindowClear(295, 03, 295 + SOC / 5, 13, COLOR_GREEN);
+		}else
+		{
+			LCD_ShowPattern(288, 0, 320, 16, LCD_Pattern16x32[2], COLOR_BLACK, COLOR_EGGSHELL);
+			LCD_WindowClear(295, 03, 295 + SOC / 5, 13, COLOR_GREEN);
+		}
+		ShowSOC = SOC;
 	}
 	
 	//显示时间
@@ -358,12 +391,15 @@ void DesktopMode(void)
 	}
 	
 	//显示温湿度
-//	if(MyRTC_GetCounter() - DHT11_ReadTimeFlag >= 5)
-//	{
-			DH11_ReadData();
-			ShowTempAndHum(0, 0, COLOR_BLACK, COLOR_EGGSHELL);
-			DHT11_ReadTimeFlag = MyRTC_GetCounter();
-//	}
+	if(ShowTempAndHum_Flag != 0)
+	{
+		if(MyRTC_GetCounter() - DHT11_ReadTimeFlag >= 3)
+		{
+				DH11_ReadData();
+				ShowTempAndHum(0, 0, COLOR_BLACK, COLOR_EGGSHELL);
+				DHT11_ReadTimeFlag = MyRTC_GetCounter();
+		}
+	}
 
 	//显示播放动画
 	if(BT301M_MODE_Data == 0)
@@ -520,6 +556,7 @@ void SetMode(void)
 	const uint8_t MainMenu_Num = 4;
 	const uint8_t BluetoothMenu_Num = 4;
 	const uint8_t TimeMenu_Num = 7;
+	const uint8_t showMenu_Num = 3;
 	
 	Menu_Tab Menu[] = {{"蓝牙设置->", 0X0000},
 										{"时间设置->", 0X0001},
@@ -540,7 +577,8 @@ void SetMode(void)
 										{"应用", 0XF106},
 	
 										{"亮度", 0XF200},
-										{"显示温湿度", 0XF201}};
+										{"自动息屏", 0XF201},
+										{"显示温湿度", 0XF202}};
 	
 																		
 	Key_Status = Key_GetStatus(&Key_Up);
@@ -594,30 +632,53 @@ void SetMode(void)
 							{
 								case 0XF100:
 									SetTime.tm_year--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF101:
 									SetTime.tm_mon--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF102:
 									SetTime.tm_mday--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF103:
 									SetTime.tm_hour--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF104:
 									SetTime.tm_min--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF105:
 									SetTime.tm_sec--;
+									Key_LeftFeedback_Flag = 10;
 									break;
-								case 0XF106:
+								default:
+									Checked_SerialNum = 0x0000;
+									LCD_ALLClear(COLOR_BLACK);	
+									break;
+							}
+							break;
+							
+						case 0xF200:
+							switch(Checked_SerialNum)
+							{
+								case 0XF200:
+									if(Set_Brightness > 0) Set_Brightness--;
+									Key_LeftFeedback_Flag = 10;
+									break;
+								case 0XF201:
+									if(Set_Brightness > 0) Set_Brightness--;
+									Key_LeftFeedback_Flag = 10;
+									break;
+								default:
 									Checked_SerialNum = 0x0000;
 									LCD_ALLClear(COLOR_BLACK);
 									break;
-								default:break;
 							}
-							Key_LeftFeedback_Flag = 10;
 							break;
+							
 						default:
 							Checked_SerialNum = 0x0000;
 							LCD_ALLClear(COLOR_BLACK);
@@ -633,30 +694,53 @@ void SetMode(void)
 							{
 								case 0XF100:
 									SetTime.tm_year--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF101:
 									SetTime.tm_mon--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF102:
 									SetTime.tm_mday--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF103:
 									SetTime.tm_hour--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF104:
 									SetTime.tm_min--;
+									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF105:
 									SetTime.tm_sec--;
+									Key_LeftFeedback_Flag = 10;
 									break;
-								case 0XF106:
+								default:
+									Checked_SerialNum = 0x0000;
+									LCD_ALLClear(COLOR_BLACK);	
+									break;
+							}
+							break;
+							
+						case 0xF200:
+							switch(Checked_SerialNum)
+							{
+								case 0XF200:
+									if(Set_Brightness > 0) Set_Brightness--;
+									Key_LeftFeedback_Flag = 10;
+									break;
+								case 0XF201:
+									if(Set_Brightness > 0) Set_Brightness--;
+									Key_LeftFeedback_Flag = 10;
+									break;
+								default:
 									Checked_SerialNum = 0x0000;
 									LCD_ALLClear(COLOR_BLACK);
 									break;
-								default:break;
 							}
-							Key_LeftFeedback_Flag = 10;
 							break;
+							
 						default:
 							Checked_SerialNum = 0x0000;
 							LCD_ALLClear(COLOR_BLACK);
@@ -694,26 +778,50 @@ void SetMode(void)
 							{
 								case 0XF100:
 									SetTime.tm_year++;
+									Key_RightFeedback_Flag = 10;
 									break;
 								case 0XF101:
 									SetTime.tm_mon++;
+									Key_RightFeedback_Flag = 10;
 									break;
 								case 0XF102:
 									SetTime.tm_mday++;
+									Key_RightFeedback_Flag = 10;
 									break;
 								case 0XF103:
 									SetTime.tm_hour++;
+									Key_RightFeedback_Flag = 10;
 									break;
 								case 0XF104:
 									SetTime.tm_min++;
+									Key_RightFeedback_Flag = 10;
 									break;
 								case 0XF105:
 									SetTime.tm_sec++;
+									Key_RightFeedback_Flag = 10;
 									break;
 								default:break;
 							}
-							Key_RightFeedback_Flag = 10;
 							break;
+							
+						case 0xF200:
+							switch(Checked_SerialNum)
+							{
+								case 0XF200:
+									if(Set_Brightness < 100) Set_Brightness++;
+									Key_RightFeedback_Flag = 10;
+									break;
+								case 0XF201:
+									if(Set_Brightness < 100) Set_Brightness++;
+									Key_RightFeedback_Flag = 10;
+									break;
+								default:
+									Checked_SerialNum = 0x0000;
+									LCD_ALLClear(COLOR_BLACK);
+									break;
+							}
+							break;
+							
 						default:break;
 					}
 				}
@@ -732,26 +840,50 @@ void SetMode(void)
 						{
 							case 0XF100:
 								SetTime.tm_year++;
+								Key_RightFeedback_Flag = 10;
 								break;
 							case 0XF101:
 								SetTime.tm_mon++;
+								Key_RightFeedback_Flag = 10;
 								break;
 							case 0XF102:
 								SetTime.tm_mday++;
+								Key_RightFeedback_Flag = 10;
 								break;
 							case 0XF103:
 								SetTime.tm_hour++;
+								Key_RightFeedback_Flag = 10;
 								break;
 							case 0XF104:
 								SetTime.tm_min++;
+								Key_RightFeedback_Flag = 10;
 								break;
 							case 0XF105:
 								SetTime.tm_sec++;
+								Key_RightFeedback_Flag = 10;
 								break;
 							default:break;
 						}
-						Key_RightFeedback_Flag = 10;
 						break;
+
+						case 0xF200:
+							switch(Checked_SerialNum)
+							{
+								case 0XF200:
+									if(Set_Brightness < 100) Set_Brightness++;
+									Key_RightFeedback_Flag = 10;
+									break;
+								case 0XF201:
+									if(Set_Brightness < 100) Set_Brightness++;
+									Key_RightFeedback_Flag = 10;
+									break;
+								default:
+									Checked_SerialNum = 0x0000;
+									LCD_ALLClear(COLOR_BLACK);
+									break;
+							}
+							break;
+							
 					default:break;
 				}
 				break;
@@ -770,8 +902,17 @@ void SetMode(void)
 					Checked_SerialNum |= 0xF000;
 					Checked_SerialNum = ((Checked_SerialNum & 0x000F) << 8) | (Checked_SerialNum & 0xF0F0);
 					Checked = 0;
-					SetTime = MyRTC_ReadTime();
 					LCD_ALLClear(COLOR_BLACK);
+					switch((Checked_SerialNum & 0x0F00) >> 8)
+					{
+						case 1: 
+							SetTime = MyRTC_ReadTime();
+							break;
+						case 2: 
+							LCD_ShowPattern(96, 12, 96 + 208, 12 + 8, LCD_Pattern8x208[0], COLOR_EGGSHELL, COLOR_BLACK);
+							LCD_WindowClear(100, 14, 100 + Set_Brightness * 2, 18, COLOR_EGGSHELL);
+							break;
+					}
 				}else
 				{
 					switch((Checked_SerialNum & 0x0F00) >> 8)
@@ -817,6 +958,7 @@ void SetMode(void)
 								break;
 							default:break;
 							}
+						
 						case 1:
 							if(Checked_SerialNum == 0XF106)
 							{
@@ -824,6 +966,19 @@ void SetMode(void)
 								Checked_SerialNum = 0x0000;
 								LCD_ALLClear(COLOR_BLACK);
 							}
+							
+						case 2:
+							switch(Checked_SerialNum)
+							{
+								case 0xF201:
+									break;
+								case 0xF202:
+									ShowTempAndHum_Flag = ~ShowTempAndHum_Flag;
+									break;
+								default:break;
+							}
+							//显示设置ok
+//						ShowTempAndHum_Flag
 							break;
 						default:break;
 					}
@@ -891,6 +1046,9 @@ void SetMode(void)
 			case 1:
 				Checked_Scope = TimeMenu_Num;
 				break;
+			case 2:
+				Checked_Scope = showMenu_Num;
+				break;
 			default:break;
 		}
 	}
@@ -900,7 +1058,7 @@ void SetMode(void)
 	Checked_SerialNum = (Checked_SerialNum & 0XFFF0) | ( (uint16_t )(Checked & 0X0F) );
 	
 	
-	for(uint8_t i = 0; i < MainMenu_Num + BluetoothMenu_Num + TimeMenu_Num; i++)
+	for(uint8_t i = 0; i < MainMenu_Num + BluetoothMenu_Num + TimeMenu_Num + showMenu_Num; i++)
 	{
 		if( (Checked_SerialNum & 0XFFF0) == (Menu[i].SerialNum & 0XFFF0) )
 		{
@@ -921,6 +1079,7 @@ void SetMode(void)
 		}
 	}
 	
+	//蓝牙设置
 	if((Checked_SerialNum & 0xFF00) == 0XF000)
 	{
 		if(BT301M_MODE_Data == 0)
@@ -961,6 +1120,7 @@ void SetMode(void)
 		}
 	}
 	
+	//时间设置
 	if((Checked_SerialNum & 0xFF00) == 0XF100)
 	{
 		for(uint8_t i = 0; i < TimeMenu_Num - 1; i++)
@@ -1101,6 +1261,66 @@ void SetMode(void)
 		}else
 		{
 			LCD_ShowUnsigNum(96, 32 * 5, SetTime.tm_sec, COLOR_EGGSHELL,COLOR_BLACK);
+		}
+	}
+	
+	//显示设置
+	if((Checked_SerialNum & 0xFF00) == 0XF200)
+	{
+		if(Key_LeftFeedback_Flag != 0)
+		{
+			switch(Checked_SerialNum & 0x000F)
+			{
+				case 0:
+					LCD_ShowPattern(80, 8, 80 + 16, 8 + 16, LCD_Pattern16x16[0], COLOR_EGGSHELL, COLOR_BLACK);
+					break;
+				case 1:
+					LCD_ShowPattern(160, 40, 160 + 16, 56, LCD_Pattern16x16[0], COLOR_EGGSHELL, COLOR_BLACK);
+					break;
+				default:break;
+			}
+			Key_LeftFeedback_Flag--;
+		}else
+		{
+			LCD_ShowPattern(80, 8, 80 + 16, 8 + 16, LCD_Pattern16x16[0], COLOR_STEEL_BLUE, COLOR_BLACK);
+			LCD_ShowPattern(160, 40, 160 + 16, 56, LCD_Pattern16x16[0], COLOR_STEEL_BLUE, COLOR_BLACK);
+		}
+		
+		if(Key_RightFeedback_Flag != 0)
+		{
+			switch(Checked_SerialNum & 0x000F)
+			{
+				case 0:
+					LCD_ShowPattern(96 + 208, 8, 96 + 16 + 208, 8 + 16, LCD_Pattern16x16[1], COLOR_EGGSHELL, COLOR_BLACK);
+					break;
+				case 1:
+					LCD_ShowPattern(192, 40, 192 + 16, 56, LCD_Pattern16x16[1], COLOR_EGGSHELL, COLOR_BLACK);
+					break;
+				default:break;
+			}
+			Key_RightFeedback_Flag--;
+		}else
+		{
+			LCD_ShowPattern(96 + 208, 8, 96 + 16 + 208, 8 + 16, LCD_Pattern16x16[1], COLOR_STEEL_BLUE, COLOR_BLACK);
+			LCD_ShowPattern(192, 40, 192 + 16, 56, LCD_Pattern16x16[1], COLOR_STEEL_BLUE, COLOR_BLACK);
+		}
+		
+	if(Set_Brightness != Brightness)
+	{
+		LCD_ShowPattern(96, 12, 96 + 208, 12 + 8, LCD_Pattern8x208[0], COLOR_EGGSHELL, COLOR_BLACK);
+		if(Set_Brightness > 0)
+		{
+				LCD_WindowClear(100, 14, 100 + Set_Brightness * 2, 18, COLOR_EGGSHELL);
+		}
+	}
+		
+		
+		if(ShowTempAndHum_Flag == 0)
+		{
+			LCD_ShowPattern(320 - 32, 64, 320, 96, LCD_Pattern32x32[0], COLOR_RED, COLOR_BLACK);
+		}else
+		{
+			LCD_ShowPattern(320 - 32, 64, 320, 96, LCD_Pattern32x32[1], COLOR_GREEN, COLOR_BLACK);
 		}
 	}
 }

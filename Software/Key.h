@@ -38,5 +38,6 @@ void Key_IRQHandlerStatus(Key_InitTypedef *Key, uint32_t EXTI_Line);
 void Key_LongPoll(Key_InitTypedef *Key);
 void Key_ALLLongHoldPoll(void);
 uint8_t Key_GetStatus(Key_InitTypedef *Key);
+void PowerOff(void);
 
 #endif

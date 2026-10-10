@@ -4,8 +4,8 @@
 
 //DH11引脚配置
 const GPIO_Pin_InitTypedef DH11_IO_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOA,
-																							.GPIOx = (GPIO_TypeDef *)GPIOA,
-																							.GPIO_Pin = GPIO_Pin_1};
+																							.GPIOx = (GPIO_TypeDef *)GPIOB,
+																							.GPIO_Pin = GPIO_Pin_10};
 
 volatile uint8_t DH11_Status = 0;
 volatile uint8_t  DH11_Response_Flag = 0;

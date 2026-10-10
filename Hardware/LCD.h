@@ -75,6 +75,7 @@
 
 
 void LCD_Init(void);
+void LCD_SetBLBrightnes(uint16_t Brightnes);
 void LCD_DrawPixel(uint16_t x, uint16_t y, uint16_t color);
 void LCD_ALLClear(uint16_t color);
 void LCD_WindowClear(uint16_t x, uint16_t y, uint16_t Stop_x, uint16_t Stop_y, uint16_t color);
@@ -84,9 +85,8 @@ void LCD_ShowUnsigNum(uint16_t x, uint16_t y, uint32_t Num, uint16_t color,  uin
 void LCD_ShowTimeNum(uint16_t x, uint16_t y, uint8_t Num, uint16_t color,  uint16_t BackgroundColor);
 void LCD_ShowPattern(uint16_t x, uint16_t y,  uint16_t Stop_x, uint16_t Stop_y,const uint8_t *Pattern, uint16_t color,  uint16_t BackgroundColor);
 uint16_t LCD_GetString_X_Offset(char *Data);
-
-
 void LCD_ShowPortionChar(uint16_t x, uint16_t y, char *utf8, uint16_t StartColumn, uint16_t ShowWide, uint16_t color, uint16_t BackgroundColor);
 void LCD_ShowStringRoll(uint16_t x, uint16_t y, uint16_t ShowWide, char *Data, uint16_t *offset, uint16_t color, uint16_t BackgroundColor);
-
+//void LCD_SetBrightness(uint8_t Brightness);
+//uint16_t LCD_GetBrightness(void);
 #endif

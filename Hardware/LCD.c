@@ -19,6 +19,11 @@ const  GPIO_Pin_InitTypedef LCD_DC_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_G
 																							 .GPIOx = (GPIO_TypeDef *)GPIOB,
 																							 .GPIO_Pin = GPIO_Pin_0};
 
+//背光控制
+const  GPIO_Pin_InitTypedef LCD_BL_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOA,
+																							.GPIOx = (GPIO_TypeDef *)GPIOA,
+																							.GPIO_Pin = GPIO_Pin_11};
+																					 
 uint8_t UTF8Char_length = 0;
 uint16_t ColumnAddressSet = 320;
 uint16_t RowAddressSet    = 240;
@@ -53,37 +58,63 @@ void LCD_WriteData(uint8_t LCD_Data)
 void LCD_Init(void)
 {	
 	MySPI_Init(&LCD_SS_Typedef);
-
+	
 	RCC_APB2PeriphClockCmd(LCD_RST_Typedef.RCC_APB2Periph,ENABLE);
 	GPIO_InitTypeDef GPIO_RST_InitStructure;
 	GPIO_RST_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_RST_InitStructure.GPIO_Pin = LCD_RST_Typedef.GPIO_Pin;
 	GPIO_RST_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(LCD_RST_Typedef.GPIOx,&GPIO_RST_InitStructure);
-
+	
 	RCC_APB2PeriphClockCmd(LCD_DC_Typedef.RCC_APB2Periph,ENABLE);
 	GPIO_InitTypeDef GPIO_DC_InitStructure;
 	GPIO_DC_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_DC_InitStructure.GPIO_Pin = LCD_DC_Typedef.GPIO_Pin;
 	GPIO_DC_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(LCD_DC_Typedef.GPIOx,&GPIO_DC_InitStructure);
-
-
+	
+	RCC_APB2PeriphClockCmd(LCD_BL_Typedef.RCC_APB2Periph,ENABLE);
+	GPIO_InitTypeDef GPIO_BL_InitStructure;
+	GPIO_BL_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_BL_InitStructure.GPIO_Pin = LCD_BL_Typedef.GPIO_Pin;
+	GPIO_BL_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(LCD_BL_Typedef.GPIOx,&GPIO_BL_InitStructure);
+	
+	RCC_APB2PeriphClockCmd(RCC_APB2Periph_TIM1, ENABLE);
+	TIM_TimeBaseInitTypeDef TIM_TimeBaseInitStructure;
+	TIM_TimeBaseInitStructure.TIM_ClockDivision = TIM_CKD_DIV1;
+	TIM_TimeBaseInitStructure.TIM_CounterMode = TIM_CounterMode_Up;
+	TIM_TimeBaseInitStructure.TIM_Period = 100 - 1;
+	TIM_TimeBaseInitStructure.TIM_Prescaler = 72 - 1;
+	TIM_TimeBaseInitStructure.TIM_RepetitionCounter = 0;
+	TIM_TimeBaseInit(TIM1, &TIM_TimeBaseInitStructure);
+	
+	TIM_OCInitTypeDef TIM_OCInitStructure;
+	TIM_OCStructInit(&TIM_OCInitStructure);
+	TIM_OCInitStructure.TIM_OCMode = TIM_OCMode_PWM1;
+	TIM_OCInitStructure.TIM_OCPolarity = TIM_OCPolarity_High;
+	TIM_OCInitStructure.TIM_OutputState = TIM_OutputState_Enable;
+	TIM_OCInitStructure.TIM_Pulse = 50;
+	TIM_OC4Init(TIM1, &TIM_OCInitStructure);
+	
+	TIM_CtrlPWMOutputs(TIM1, ENABLE);
+	TIM_Cmd(TIM1, ENABLE); 
+	
 	//硬件复位：先拉低再拉高
 	GPIO_WriteBit(LCD_RST_Typedef.GPIOx,LCD_RST_Typedef.GPIO_Pin,Bit_RESET);
 	SYSTime_Delayms(6);
 	GPIO_WriteBit(LCD_RST_Typedef.GPIOx,LCD_RST_Typedef.GPIO_Pin,Bit_SET);
 	SYSTime_Delayms(6);
-
+	
 	//软件复位命令
 	LCD_WriteCom(0x01);
 	SYSTime_Delayms(6);
-
+	
 	//退出睡眠模式
 	LCD_WriteCom(0x11);
 	SYSTime_Delayms(120);
-
-
+	
+	
 	//--------------------------------ST7789S 帧速率控制----------------------------------//
 	LCD_WriteCom(0x2A); //列地址设置命令(CASET)
 	LCD_WriteData(0x00);
@@ -180,13 +211,22 @@ void LCD_Init(void)
 	LCD_WriteCom(0x2C);			//内存写入命令(RAMWR)
 }
 
+/*设置背光亮度，留有%10的余量
+	参数：0-99亮度值
+*/
+void LCD_SetBLBrightnes(uint16_t Brightnes)
+{
+	Brightnes = (Brightnes * 90 / 100 + 10);
+	TIM_SetCompare4(TIM1, Brightnes);
+}
+
 /*写颜色数据
 	参数：8bit数据
 */
 void LCD_WriteColorData(uint16_t color)
 {
-		MySPI_SwapByte((uint8_t )(color>>8));
-		MySPI_SwapByte((uint8_t )color);
+	MySPI_SwapByte((uint8_t )(color>>8));
+	MySPI_SwapByte((uint8_t )color);
 }
 
 /*UTF-8解码
@@ -593,3 +633,30 @@ void LCD_ShowStringRoll(uint16_t x, uint16_t y, uint16_t ShowWide, char *Data, u
 	}
 }
 
+//void LCD_SetBrightness(uint8_t Brightness)
+//{
+//	LCD_WriteCom(0x53);
+//	LCD_WriteData(0x2C);
+//	
+//	LCD_WriteCom(0x51);
+//	LCD_WriteData((uint8_t )Brightness);
+//}
+
+//uint16_t LCD_GetBrightness(void)
+//{
+//	uint16_t Brightness;
+//	
+//	LCD_WriteCom(0x53);
+//	LCD_WriteData(0x2C);
+//	
+//	GPIO_WriteBit(LCD_DC_Typedef.GPIOx, LCD_DC_Typedef.GPIO_Pin, Bit_RESET);
+//	MySPI_SSStart(&LCD_SS_Typedef);
+//	MySPI_SwapByte(0x52);
+
+//	GPIO_WriteBit(LCD_DC_Typedef.GPIOx, LCD_DC_Typedef.GPIO_Pin, Bit_SET);
+//	MySPI_SwapByte(0xFF);
+//	Brightness = MySPI_SwapByte(0xFF);
+//	MySPI_SSStop(&LCD_SS_Typedef);
+//	
+//	return Brightness;
+//}

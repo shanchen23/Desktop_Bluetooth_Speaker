@@ -700,16 +700,6 @@
               <FilePath>.\Hardware\MyRTC.h</FilePath>
             </File>
             <File>
-              <FileName>MyI2C.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\Hardware\MyI2C.c</FilePath>
-            </File>
-            <File>
-              <FileName>MyI2C.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>.\Hardware\MyI2C.h</FilePath>
-            </File>
-            <File>
               <FileName>LCD.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Hardware\LCD.c</FilePath>
@@ -788,6 +778,16 @@
               <FileName>MPU6050_Reg.h</FileName>
               <FileType>5</FileType>
               <FilePath>.\Hardware\MPU6050_Reg.h</FilePath>
+            </File>
+            <File>
+              <FileName>MAX17048.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Hardware\MAX17048.c</FilePath>
+            </File>
+            <File>
+              <FileName>MAX17048.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>.\Hardware\MAX17048.h</FilePath>
             </File>
           </Files>
         </Group>

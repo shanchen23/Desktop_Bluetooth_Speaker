@@ -8,6 +8,7 @@ Key_InitTypedef Key_Bown   = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_9, 1000, 0, 
 Key_InitTypedef Key_Left   = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_12, 1000, 0, 0, 0};
 Key_InitTypedef Key_Right  = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_13, 1000, 0, 0, 0};
 Key_InitTypedef Key_OK     = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_14, 1000, 0, 0, 0};
+GPIO_Pin_InitTypedef Key_PowerOff = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_5};
 
 /*初始化按键的GPIO，EXTI，NVIC
   参数：按键引脚参数的结构体
@@ -66,12 +67,23 @@ void Key_Init(Key_InitTypedef *Key)
 //初始化
 void Key_ALLInit(void)
 {
+	RCC_APB1PeriphClockCmd(RCC_APB1Periph_PWR, ENABLE);
+	RCC_APB1PeriphClockCmd(Key_PowerOff.RCC_APB2Periph, ENABLE);
+	
+	GPIO_InitTypeDef GPIO_InitStructure;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP ;
+	GPIO_InitStructure.GPIO_Pin = Key_PowerOff.GPIO_Pin;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(Key_PowerOff.GPIOx,&GPIO_InitStructure);
+	
 	Key_Init(&Key_Switch_Return);
 	Key_Init(&Key_Up);
 	Key_Init(&Key_Bown);
 	Key_Init(&Key_Left);
 	Key_Init(&Key_Right);
 	Key_Init(&Key_OK);
+	
+	GPIO_WriteBit(Key_PowerOff.GPIOx, Key_PowerOff.GPIO_Pin, Bit_RESET);
 }
 
 /*在中断中处理按键状态
@@ -135,6 +147,17 @@ uint8_t Key_GetStatus(Key_InitTypedef *Key)
 	
 	return ret;
 }
+
+
+//进待机，并关闭外部电源
+void PowerOff(void)
+{
+	GPIO_WriteBit(Key_PowerOff.GPIOx, Key_PowerOff.GPIO_Pin, Bit_SET);
+	__disable_irq();
+	PWR_WakeUpPinCmd(ENABLE);   // 关机前一刻才把 PA0 设为唤醒脚
+	PWR_EnterSTANDBYMode();
+}
+
 
 //中断记录按下的时间和松手的时间
 void EXTI0_IRQHandler(void)

@@ -39,3 +39,4 @@
 .\objects\main.o: .\Hardware\W25Q64.h
 .\objects\main.o: .\Hardware\BT301M.h
 .\objects\main.o: C:\Keil_v5\ARM\ARMCC\Bin\..\include\string.h
+.\objects\main.o: .\Hardware\MAX17048.h

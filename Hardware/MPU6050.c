@@ -9,7 +9,7 @@ const GPIO_Pin_InitTypedef MPU6050_SCL_Typedef = {.RCC_APB2Periph = RCC_APB2Peri
 
 const GPIO_Pin_InitTypedef MPU6050_SDA_Typedef = {.RCC_APB2Periph = RCC_APB2Periph_GPIOB,
 																									.GPIOx = (GPIO_TypeDef *)GPIOB,
-																									.GPIO_Pin = GPIO_Pin_6};
+																									.GPIO_Pin = GPIO_Pin_7};
 
 /**
   * 函    数：MPU6050等待事件
