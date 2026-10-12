@@ -1,5 +1,5 @@
 #include "stm32f10x.h"                  // Device header
-#include "stm32f10x_pwr.h"   // 电源控制库（工程里已经编译过 stm32f10x_pwr.o，直接用）
+#include "stm32f10x_pwr.h"
 #include <stdio.h>
 #include "Time.h"
 #include "LCD.h"
@@ -33,15 +33,16 @@ typedef struct
 	
 }Menu_Tab;
 
-TimeDateTypedef Time_structure = {1999, 12, 31, 23, 59, 55};
 uint8_t Mode = 0;
 uint8_t Key_Status = 0;
 uint8_t Key_Singlelong_Flag = 0; // 0:还没长按 1:长按过了
 uint8_t Key_SwitchReturn_Flag = 0;//防止多个地方取用Key_Switch_Return得不到状态
 uint8_t ShowTempAndHum_Flag = 0xFF;
+uint8_t Time_OFFScreen = 1;
+uint32_t Time_OFFScreen_Flag = 0;
 uint8_t SOC = 0;
-uint8_t Set_Brightness = 100;
-uint8_t Brightness = 100;
+uint8_t Set_Brightnes = 100;
+uint8_t Brightnes = 100;
 uint32_t DHT11_ReadTimeFlag = 0;
 uint32_t SOC_ReadTimeFlag = 0;
 
@@ -61,14 +62,13 @@ int main()
 	LCD_Init();
 	MAX17048_Init(); 
 	
-	MyRTC_SetTime(&Time_structure);
 	LCD_ALLClear(COLOR_EGGSHELL);
 	
 	Mode = Desktop_Mode;
 	
 	LCD_ShowPattern(288, 0, 320, 16, LCD_Pattern16x32[2], COLOR_BLACK, COLOR_EGGSHELL);
 	
-	LCD_SetBLBrightnes(Brightness);
+	LCD_SetBLBrightnes(Brightnes);
 	while(1)
 	{
 		BT301M_SendATCmd();
@@ -82,7 +82,6 @@ int main()
 			PowerOff();
 		}
 		
-		//Key_ALLLongHoldPoll();
 		switch (Mode)
     {
     	case Desktop_Mode:
@@ -107,24 +106,25 @@ int main()
 			sprintf(BT301M_SOC, "AT+HFPBATT=%d",(SOC / 20));
 			BT301M_TXEnQueue(BT301M_SOC);
 			DistributeRXData();
+			if(SOC == 0)
+			{
+				LCD_ALLClear(COLOR_BLACK);
+				Key_SwitchReturn_Flag = 0;
+				PowerOff();
+			}
 		}
 		
-		if(Set_Brightness != Brightness)
+		if(Set_Brightnes != Brightnes)
 		{
-			LCD_SetBLBrightnes(Set_Brightness);
-			Brightness = Set_Brightness; 
+			LCD_SetBLBrightnes(Set_Brightnes);
+			Brightnes = Set_Brightnes; 
 		}
 		
-		
-		
-		
-		
-		
-		
-		
-		//调试信息
-		//LCD_ShowString(100, 150, ErrorInformation, COLOR_RED ,COLOR_EGGSHELL);
-		//LCD_ShowUnsigNum(100, 0, MAX17048_ReadReg(0x04), COLOR_BLACK, COLOR_EGGSHELL);
+		if(Time_OFFScreen_Flag != 0)
+		{
+			if(MyRTC_GetCounter() - Key_UpdateTim > Time_OFFScreen_Flag) TIM_SetCompare4(TIM1, 0);
+			if(MyRTC_GetCounter() - Key_UpdateTim < 2) LCD_SetBLBrightnes(Brightnes);
+		}
 	}
 }
 
@@ -293,46 +293,45 @@ void Showplayer(uint16_t x, uint16_t y, uint16_t color, uint16_t BackgroundColor
 		}
 		
 		//显示进度
-		if(PlayProgress > (uint8_t )(BT301M_BTINFO_Data.BTINFO_PlayTime / (BT301M_BTINFO_Data.BTINFO_ALLTime / 200)) )
+		if(BT301M_BTINFO_Data.BTINFO_ALLTime >= 200)
 		{
-			LCD_ShowPattern(x + 80, y + 32 , x + 80 + 208, y + 32 + 8, LCD_Pattern8x208[0], COLOR_BLACK, COLOR_EGGSHELL);
-			LCD_WindowClear(x + 84, y + 34, x + 84 + 200, y + 38, COLOR_EGGSHELL);
+			PlayProgress = (uint8_t )(BT301M_BTINFO_Data.BTINFO_PlayTime / (BT301M_BTINFO_Data.BTINFO_ALLTime / 200));
+			LCD_WindowClear(x + 84, y + 34, x + 84 + PlayProgress + 1, y + 38, COLOR_RED);
+			LCD_WindowClear(x + 84 + PlayProgress + 1, y + 34, x + 84 + 200, y + 38, COLOR_EGGSHELL);
 		}
-		PlayProgress = (uint8_t )(BT301M_BTINFO_Data.BTINFO_PlayTime / (BT301M_BTINFO_Data.BTINFO_ALLTime / 200));
-		LCD_WindowClear(x + 84, y + 34, x + 84 + PlayProgress + 1, y + 38, COLOR_RED);
 	}
 	
 	//显示歌词歌名
 	if(strcoll(BT301M_LYRIC_Data.LYRIC_Libretto, Libretto) != 0)
 	{
-			strcpy(Libretto, BT301M_LYRIC_Data.LYRIC_Libretto);
-			LCD_WindowClear(0, y - 32, 320, y, COLOR_EGGSHELL);
-			LibrettoRoll = 0;
+		strcpy(Libretto, BT301M_LYRIC_Data.LYRIC_Libretto);
+		LCD_WindowClear(0, y - 32, 320, y, COLOR_EGGSHELL);
+		LibrettoRoll = 0;
 	}
-
+	
 	if(LCD_GetString_X_Offset(Libretto) > 320)
 	{
-			// 滚动显示
-			LCD_ShowStringRoll(0, y - 32, 320, Libretto, &LibrettoRoll, COLOR_DEEP_SKY_BLUE, COLOR_EGGSHELL);
+		// 滚动显示
+		LCD_ShowStringRoll(0, y - 32, 320, Libretto, &LibrettoRoll, COLOR_DEEP_SKY_BLUE, COLOR_EGGSHELL);
 	}else
 	{
-			LCD_ShowString(0, y - 32, Libretto, COLOR_DEEP_SKY_BLUE, COLOR_EGGSHELL);
+		LCD_ShowString(0, y - 32, Libretto, COLOR_DEEP_SKY_BLUE, COLOR_EGGSHELL);
 	}
-
+	
 	if(strcoll(BT301M_LYRIC_Data.LYRIC_Name, Name) != 0)
 	{
-			strcpy(Name, BT301M_LYRIC_Data.LYRIC_Name);
-			LCD_WindowClear(x + 80, y, 320, y + 32, COLOR_EGGSHELL);
-			NameRoll = 0;
+		strcpy(Name, BT301M_LYRIC_Data.LYRIC_Name);
+		LCD_WindowClear(x + 80, y, 320, y + 32, COLOR_EGGSHELL);
+		NameRoll = 0;
 	}
-
+	
 	if(LCD_GetString_X_Offset(Name) > 320 - (x + 80))
 	{
-			// 滚动显示
-			LCD_ShowStringRoll(x + 80, y, 320 - (x + 80), Name, &NameRoll, COLOR_BLACK, COLOR_EGGSHELL);
+		// 滚动显示
+		LCD_ShowStringRoll(x + 80, y, 320 - (x + 80), Name, &NameRoll, COLOR_BLACK, COLOR_EGGSHELL);
 	}else
 	{
-			LCD_ShowString(x + 80, y, Name, COLOR_BLACK, COLOR_EGGSHELL);
+		LCD_ShowString(x + 80, y, Name, COLOR_BLACK, COLOR_EGGSHELL);
 	}
 }
 
@@ -354,7 +353,9 @@ void DesktopMode(void)
 {
 	static uint32_t SPKVOLT_Time;
 	static uint32_t BT301M_MODE_State = 0;
+	static uint32_t ShowTime_Flag = 0;
 	static uint8_t ShowSOC = 0;
+	
 	
 	uint16_t SPKVOLT_IntervalTime = 250;
 	
@@ -370,24 +371,22 @@ void DesktopMode(void)
 	//显示电量
 	if(ShowSOC != SOC)
 	{
-		if(ShowSOC > SOC)
-		{
-			LCD_WindowClear(295, 03, 295 + SOC / 5, 13, COLOR_GREEN);
-		}else
-		{
-			LCD_ShowPattern(288, 0, 320, 16, LCD_Pattern16x32[2], COLOR_BLACK, COLOR_EGGSHELL);
-			LCD_WindowClear(295, 03, 295 + SOC / 5, 13, COLOR_GREEN);
-		}
+		LCD_WindowClear(295, 03, 295 + SOC / 5, 13, COLOR_GREEN);
+		LCD_WindowClear(295 + SOC / 5, 03, 315, 13, COLOR_EGGSHELL);
 		ShowSOC = SOC;
 	}
 	
 	//显示时间
-	if(BT301M_MODE_Data == 0)
+	if(ShowTime_Flag != MyRTC_GetCounter())
 	{
-		ShowTime(56, 16, &Time_structure, COLOR_BLACK, COLOR_EGGSHELL);
-	}else
-	{
-		ShowTime(56, 64, &Time_structure, COLOR_BLACK, COLOR_EGGSHELL);
+		ShowTime_Flag = MyRTC_GetCounter();
+		if(BT301M_MODE_Data == 0)
+		{
+			ShowTime(56, 16, &Time_structure, COLOR_BLACK, COLOR_EGGSHELL);
+		}else
+		{
+			ShowTime(56, 64, &Time_structure, COLOR_BLACK, COLOR_EGGSHELL);
+		}
 	}
 	
 	//显示温湿度
@@ -425,7 +424,7 @@ void DesktopMode(void)
     	case 2:
 				Key_Singlelong_Flag = 0;
     		break;
-			case 4:
+			case 3:
 				if(Key_Singlelong_Flag == 0)
 				{
 					LCD_ALLClear(COLOR_BLACK);
@@ -451,7 +450,7 @@ void DesktopMode(void)
 					BT301M_TXEnQueue("AT+SPKVOL=+");
 				}
     		break;
-			case 4:
+			case 3:
 				//蓝牙模式
 				if(BT301M_MODE_Data == 0)
 				{
@@ -482,7 +481,7 @@ void DesktopMode(void)
 					BT301M_TXEnQueue("AT+SPKVOL=-");
 				}
     		break;
-			case 4:
+			case 3:
 				//蓝牙模式
 				if(BT301M_MODE_Data == 0)
 				{
@@ -551,7 +550,7 @@ void SetMode(void)
 	static TimeDateTypedef SetTime = {0};
 	static TimeDateTypedef UPSetTime_Flag = {0};
 	
-	uint8_t Checked_Scope;
+	uint8_t Checked_Scope = 0;
 	
 	const uint8_t MainMenu_Num = 4;
 	const uint8_t BluetoothMenu_Num = 4;
@@ -589,7 +588,7 @@ void SetMode(void)
     	case 1:
 				Checked--;
     		break;
-			case 4:
+			case 3:
 				Checked--;
     		break;
     	default:break;
@@ -604,7 +603,7 @@ void SetMode(void)
     	case 1:
 				Checked++;
     		break;
-			case 4:
+			case 3:
 				Checked++;
     		break;
     	default:break;
@@ -665,11 +664,12 @@ void SetMode(void)
 							switch(Checked_SerialNum)
 							{
 								case 0XF200:
-									if(Set_Brightness > 0) Set_Brightness--;
+									if(Set_Brightnes > 0) Set_Brightnes--;
 									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF201:
-									if(Set_Brightness > 0) Set_Brightness--;
+									if(Time_OFFScreen > 1) Time_OFFScreen--;
+									if(Time_OFFScreen < 10 ) LCD_WindowClear(176, 32, 176 + 32, 32 + 32, COLOR_BLACK);
 									Key_LeftFeedback_Flag = 10;
 									break;
 								default:
@@ -686,7 +686,7 @@ void SetMode(void)
 					}
 				}
     		break;
-				case 4:
+				case 3:
 					switch(Checked_SerialNum & 0xFF00)
 					{
 						case 0xF100:
@@ -727,11 +727,12 @@ void SetMode(void)
 							switch(Checked_SerialNum)
 							{
 								case 0XF200:
-									if(Set_Brightness > 0) Set_Brightness--;
+									if(Set_Brightnes > 0) Set_Brightnes--;
 									Key_LeftFeedback_Flag = 10;
 									break;
 								case 0XF201:
-									if(Set_Brightness > 0) Set_Brightness--;
+									if(Time_OFFScreen > 1) Time_OFFScreen--;
+									if(Time_OFFScreen < 10 ) LCD_WindowClear(176, 32, 176 + 32, 32 + 32, COLOR_BLACK);
 									Key_LeftFeedback_Flag = 10;
 									break;
 								default:
@@ -763,6 +764,21 @@ void SetMode(void)
 					Checked_SerialNum = ((Checked_SerialNum & 0x000F) << 8) | (Checked_SerialNum & 0xF0F0);
 					Checked = 0;
 					LCD_ALLClear(COLOR_BLACK);
+					switch((Checked_SerialNum & 0x0F00) >> 8)
+					{
+						case 1: 
+							SetTime = MyRTC_ReadTime();
+							break;
+						case 2: 
+							LCD_ShowPattern(96, 12, 96 + 208, 12 + 8, LCD_Pattern8x208[0], COLOR_EGGSHELL, COLOR_BLACK);
+							LCD_WindowClear(100, 14, 100 + Set_Brightnes * 2, 18, COLOR_EGGSHELL);
+							LCD_ShowString(224, 56, "分钟", COLOR_EGGSHELL, COLOR_BLACK);
+							LCD_WindowClear(240, 180, 260, 220, COLOR_RED);
+							LCD_WindowClear(260, 180, 280, 220, COLOR_GREEN);
+							LCD_WindowClear(280, 180, 300, 220, COLOR_BLUE);
+							break;
+						default:break;
+					}
 				}else
 				{
 					switch(Checked_SerialNum & 0xFF00)
@@ -808,12 +824,12 @@ void SetMode(void)
 							switch(Checked_SerialNum)
 							{
 								case 0XF200:
-									if(Set_Brightness < 100) Set_Brightness++;
-									Key_RightFeedback_Flag = 10;
+									if(Set_Brightnes < 100) Set_Brightnes++;
+									Key_RightFeedback_Flag = 5;
 									break;
 								case 0XF201:
-									if(Set_Brightness < 100) Set_Brightness++;
-									Key_RightFeedback_Flag = 10;
+									if(Time_OFFScreen < 99) Time_OFFScreen++;
+									Key_RightFeedback_Flag = 5;
 									break;
 								default:
 									Checked_SerialNum = 0x0000;
@@ -826,7 +842,7 @@ void SetMode(void)
 					}
 				}
     		break;
-			case 4:
+			case 3:
 				switch(Checked_SerialNum & 0xFF00)
 				{
 					case 0xF000:
@@ -870,12 +886,12 @@ void SetMode(void)
 							switch(Checked_SerialNum)
 							{
 								case 0XF200:
-									if(Set_Brightness < 100) Set_Brightness++;
-									Key_RightFeedback_Flag = 10;
+									if(Set_Brightnes < 100) Set_Brightnes++;
+									Key_RightFeedback_Flag = 5;
 									break;
 								case 0XF201:
-									if(Set_Brightness < 100) Set_Brightness++;
-									Key_RightFeedback_Flag = 10;
+									if(Time_OFFScreen < 99) Time_OFFScreen++;
+									Key_RightFeedback_Flag = 5;
 									break;
 								default:
 									Checked_SerialNum = 0x0000;
@@ -910,8 +926,13 @@ void SetMode(void)
 							break;
 						case 2: 
 							LCD_ShowPattern(96, 12, 96 + 208, 12 + 8, LCD_Pattern8x208[0], COLOR_EGGSHELL, COLOR_BLACK);
-							LCD_WindowClear(100, 14, 100 + Set_Brightness * 2, 18, COLOR_EGGSHELL);
+							LCD_WindowClear(100, 14, 100 + Set_Brightnes * 2, 18, COLOR_EGGSHELL);
+							LCD_ShowString(224, 56, "分钟", COLOR_EGGSHELL, COLOR_BLACK);
+							LCD_WindowClear(240, 180, 260, 220, COLOR_RED);
+							LCD_WindowClear(260, 180, 280, 220, COLOR_GREEN);
+							LCD_WindowClear(280, 180, 300, 220, COLOR_BLUE);
 							break;
+						default:break;
 					}
 				}else
 				{
@@ -971,14 +992,14 @@ void SetMode(void)
 							switch(Checked_SerialNum)
 							{
 								case 0xF201:
+									Time_OFFScreen_Flag = Time_OFFScreen_Flag == 0 ? ((uint32_t )Time_OFFScreen * 60) : 0;
 									break;
 								case 0xF202:
 									ShowTempAndHum_Flag = ~ShowTempAndHum_Flag;
 									break;
 								default:break;
 							}
-							//显示设置ok
-//						ShowTempAndHum_Flag
+							
 							break;
 						default:break;
 					}
@@ -997,7 +1018,7 @@ void SetMode(void)
     	case 2:
 				Key_Singlelong_Flag = 0;
     		break;
-    	case 4:
+    	case 3:
 				//返回桌面
 				if(Key_Singlelong_Flag == 0)
 				{
@@ -1056,7 +1077,6 @@ void SetMode(void)
 	if(Checked < 0) Checked = Checked_Scope - 1;
 	if(Checked > Checked_Scope - 1) Checked = 0;
 	Checked_SerialNum = (Checked_SerialNum & 0XFFF0) | ( (uint16_t )(Checked & 0X0F) );
-	
 	
 	for(uint8_t i = 0; i < MainMenu_Num + BluetoothMenu_Num + TimeMenu_Num + showMenu_Num; i++)
 	{
@@ -1294,7 +1314,7 @@ void SetMode(void)
 					LCD_ShowPattern(96 + 208, 8, 96 + 16 + 208, 8 + 16, LCD_Pattern16x16[1], COLOR_EGGSHELL, COLOR_BLACK);
 					break;
 				case 1:
-					LCD_ShowPattern(192, 40, 192 + 16, 56, LCD_Pattern16x16[1], COLOR_EGGSHELL, COLOR_BLACK);
+					LCD_ShowPattern(208, 40, 208 + 16, 56, LCD_Pattern16x16[1], COLOR_EGGSHELL, COLOR_BLACK);
 					break;
 				default:break;
 			}
@@ -1302,17 +1322,30 @@ void SetMode(void)
 		}else
 		{
 			LCD_ShowPattern(96 + 208, 8, 96 + 16 + 208, 8 + 16, LCD_Pattern16x16[1], COLOR_STEEL_BLUE, COLOR_BLACK);
-			LCD_ShowPattern(192, 40, 192 + 16, 56, LCD_Pattern16x16[1], COLOR_STEEL_BLUE, COLOR_BLACK);
+			LCD_ShowPattern(208, 40, 208 + 16, 56, LCD_Pattern16x16[1], COLOR_STEEL_BLUE, COLOR_BLACK);
 		}
 		
-	if(Set_Brightness != Brightness)
-	{
-		LCD_ShowPattern(96, 12, 96 + 208, 12 + 8, LCD_Pattern8x208[0], COLOR_EGGSHELL, COLOR_BLACK);
-		if(Set_Brightness > 0)
+		if(Set_Brightnes != Brightnes)
 		{
-				LCD_WindowClear(100, 14, 100 + Set_Brightness * 2, 18, COLOR_EGGSHELL);
+			LCD_WindowClear(100, 14, 100 + Set_Brightnes * 2, 18, COLOR_EGGSHELL);
+			LCD_WindowClear(100 + Set_Brightnes * 2, 14, 300, 18, COLOR_BLACK);
 		}
-	}
+		
+		if(Time_OFFScreen < 10)
+		{
+			LCD_ShowUnsigNum(184, 32, Time_OFFScreen, COLOR_EGGSHELL, COLOR_BLACK);
+		}else
+		{
+			LCD_ShowUnsigNum(176, 32, Time_OFFScreen, COLOR_EGGSHELL, COLOR_BLACK);
+		}
+		
+		if(Time_OFFScreen_Flag == 0)
+		{
+			LCD_ShowPattern(320 - 32, 32, 320, 64, LCD_Pattern32x32[0], COLOR_RED, COLOR_BLACK);
+		}else
+		{
+			LCD_ShowPattern(320 - 32, 32, 320, 64, LCD_Pattern32x32[1], COLOR_GREEN, COLOR_BLACK);
+		}
 		
 		
 		if(ShowTempAndHum_Flag == 0)

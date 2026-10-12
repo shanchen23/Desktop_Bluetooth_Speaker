@@ -5,6 +5,5 @@ void DH11_Init(void);
 void DH11_ReadData(void);
 float DH11_GetTempData(void);
 float DH11_GetHumData(void);
-uint8_t DHT11_ReadOnce(void);
 
 #endif

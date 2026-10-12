@@ -7,8 +7,11 @@
 #include "LCD.h"
 
 GPIO_Pin_InitTypedef BT301M_ResetPin = {.RCC_APB2Periph = RCC_APB2Periph_GPIOB,
-																					.GPIOx = (GPIO_TypeDef *)GPIOB,
-																					.GPIO_Pin = GPIO_Pin_15};
+																				.GPIOx = (GPIO_TypeDef *)GPIOB,
+																				.GPIO_Pin = GPIO_Pin_15};
+GPIO_Pin_InitTypedef PAM8403_Switch = {.RCC_APB2Periph = RCC_APB2Periph_GPIOB,
+																				.GPIOx = (GPIO_TypeDef *)GPIOB,
+																				.GPIO_Pin = GPIO_Pin_15};
 BT301M_BTINFO_Typedef BT301M_BTINFO_Data = {0};
 BT301M_LYRIC_Typedef BT301M_LYRIC_Data = {0};
 uint8_t BT301M_MODE_Data = 4;//0:蓝牙模式，1:U盘模式，2:TF卡模式，3:LINEIN 模式，4:待机模式，5:深度休眠模式
@@ -22,7 +25,7 @@ char BT301M_RX_QUEUE[20][256] = {0};
 char BT301M_RX_Buf[256] = {0};
 uint8_t BT301M_RxWrite = 0;
 uint8_t BT301M_RxRead = 0;
-uint8_t BT301M_RxCount = 0; 
+volatile uint8_t BT301M_RxCount = 0; 
 
 char BT301M_TX_QUEUE[8][32] = {0};
 char BT301M_TX_Buf[32] = {0};
@@ -144,10 +147,6 @@ void DistributeRXData(void)
 		}
 		
 	}
-	
-//	LCD_WindowClear(0, 208, 320, 240, COLOR_EGGSHELL);
-//	LCD_ShowString(0, 208, RX_Buf, COLOR_RED ,COLOR_EGGSHELL);
-	//for(uint32_t i = 0; i < 100000 ; i++);
 }
 
 /*处理BTINFO的消息
@@ -161,13 +160,14 @@ void BT301M_Dispose_BTINFO(char *Buf_Data)
 	BT301M_BTINFO_Data.BTINFO_PlayTime = 0;
 	BT301M_BTINFO_Data.BTINFO_Status = 0;
 	
-	while(Buf_Data[N] != '=')
+	while(Buf_Data[N] != '=' && Buf_Data[N] != '\0')
 	{
 		N++;
 	}
+	if(Buf_Data[N] == '\0') return;
 	N++;
 	
-	while(Buf_Data[N] != ',')
+	while(Buf_Data[N] != ',' && Buf_Data[N] != '\0')
 	{
 		BT301M_BTINFO_Data.BTINFO_ALLTime <<= 4;
 		
@@ -183,10 +183,10 @@ void BT301M_Dispose_BTINFO(char *Buf_Data)
 		}
 		N++;
 	}
-	
+	if(Buf_Data[N] == '\0') return;
 	N++;
 	
-	while(Buf_Data[N] != ',')
+	while(Buf_Data[N] != ',' && Buf_Data[N] != '\0')
 	{
 		BT301M_BTINFO_Data.BTINFO_PlayTime <<= 4;
 		
@@ -202,16 +202,13 @@ void BT301M_Dispose_BTINFO(char *Buf_Data)
 		}
 		N++;
 	}
-	
+	if(Buf_Data[N] == '\0') return;
 	N++;
 	
-	while(Buf_Data[N] != '\0')
+	while(Buf_Data[N] >= '0' && Buf_Data[N] <= '9')
 	{
-		while(Buf_Data[N] >= '0' && Buf_Data[N] <= '9')
-		{
-				BT301M_BTINFO_Data.BTINFO_Status = BT301M_BTINFO_Data.BTINFO_Status * 10 + (Buf_Data[N] - '0');
-				N++;
-		}
+		BT301M_BTINFO_Data.BTINFO_Status = BT301M_BTINFO_Data.BTINFO_Status * 10 + (Buf_Data[N] - '0');
+		N++;
 	}
 }
 
@@ -327,10 +324,11 @@ void BT301M_Dispose_WARNING(char *Buf_Data)
 {
 	uint8_t N = 0;
 	
-	while(Buf_Data[N] != '=')
+	while(Buf_Data[N] != '=' && Buf_Data[N] != '\0')
 	{
 		N++;
 	}
+	if(Buf_Data[N] == '\0') return;
 	N++;
 	
 	BT301M_WARNING_Data = Buf_Data[N] - '0';
@@ -343,10 +341,11 @@ void BT301M_Dispose_AUTOPLAY(char *Buf_Data)
 {
 	uint8_t N = 0;
 	
-	while(Buf_Data[N] != '=')
+	while(Buf_Data[N] != '=' && Buf_Data[N] != '\0')
 	{
 		N++;
 	}
+	if(Buf_Data[N] == '\0') return;
 	N++;
 	
 	BT301M_AUTOPLAY_Data = Buf_Data[N] - '0';
@@ -359,10 +358,11 @@ void BT301M_Dispose_LANGID(char *Buf_Data)
 {
 	uint8_t N = 0;
 	
-	while(Buf_Data[N] != '=')
+	while(Buf_Data[N] != '=' && Buf_Data[N] != '\0')
 	{
 		N++;
 	}
+	if(Buf_Data[N] == '\0') return;
 	N++;
 	
 	BT301M_LANGID_Data = Buf_Data[N] - '0';
@@ -391,6 +391,11 @@ void BT301M_Init(void)
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(BT301M_ResetPin.GPIOx, &GPIO_InitStructure);
 	
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Pin = PAM8403_Switch.GPIO_Pin;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(PAM8403_Switch.GPIOx, &GPIO_InitStructure);
+	
 	USART_InitTypeDef USART_InitStructure;
 	USART_InitStructure.USART_BaudRate = 115200;
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
@@ -415,23 +420,20 @@ void BT301M_Init(void)
 	SYSTime_Delayms(6);
 	GPIO_WriteBit(BT301M_ResetPin.GPIOx, BT301M_ResetPin.GPIO_Pin, Bit_RESET);
 	
-//	BT301M_TXEnQueue("AT+RESTORE");  //将蓝牙回复出厂设置
-//	DistributeRXData();
-	BT301M_TXEnQueue("AT+SSP=1");
-	DistributeRXData();
-	BT301M_TXEnQueue("AT+WARNING=1");
-	DistributeRXData();
-	BT301M_TXEnQueue("AT+LANGID=1");
-	DistributeRXData();
+	SYSTime_Delayms(500); 
 	
-	
+	BT301M_TXEnQueue("AT+AUTOCONN=0");//关闭上电回连
+	DistributeRXData();
 	BT301M_TXEnQueue("AT+BTINFO=10");//获取播放时间和状态
 	DistributeRXData();
 	BT301M_TXEnQueue("AT+LYRIC=1");//获取歌词
 	DistributeRXData();
 	BT301M_TXEnQueue("AT+MODE");//查询蓝牙模式
 	DistributeRXData();
+	BT301M_TXEnQueue("AT+MODE=IDLE");//进入待机模式
+	DistributeRXData();
 	
+	GPIO_WriteBit(PAM8403_Switch.GPIOx, PAM8403_Switch.GPIO_Pin, Bit_RESET);
 }
 
 

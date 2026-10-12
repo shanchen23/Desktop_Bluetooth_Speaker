@@ -12,6 +12,8 @@ typedef struct
 	
 }TimeDateTypedef;
 
+extern TimeDateTypedef Time_structure;
+
 void MyRTC_Init(void);
 void MyRTC_SetTime(TimeDateTypedef *SetTime);
 TimeDateTypedef MyRTC_ReadTime(void);

@@ -359,7 +359,7 @@ void LCD_WindowClear(uint16_t x, uint16_t y, uint16_t Stop_x, uint16_t Stop_y, u
 void LCD_ShowChar(uint16_t x, uint16_t y, char *utf8, uint16_t color, uint16_t BackgroundColor)
 {
 	uint16_t PixelNum;
-	uint8_t DataBuf[256] = {0};
+	uint8_t DataBuf[512] = {0};
 	
 	
 	IndexTable_Typedef.CodePoint = LCD_UTF8Decode(utf8);

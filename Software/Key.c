@@ -1,5 +1,6 @@
 #include "stm32f10x.h"                  // Device header
 #include "Key.h"
+#include "MyRTC.h"
 #include "SYSTime.h"
 	
 Key_InitTypedef Key_Switch_Return = {RCC_APB2Periph_GPIOA, GPIOA, GPIO_Pin_0, 3000, 0, 0, 0};
@@ -9,6 +10,7 @@ Key_InitTypedef Key_Left   = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_12, 1000, 0,
 Key_InitTypedef Key_Right  = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_13, 1000, 0, 0, 0};
 Key_InitTypedef Key_OK     = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_14, 1000, 0, 0, 0};
 GPIO_Pin_InitTypedef Key_PowerOff = {RCC_APB2Periph_GPIOB, GPIOB, GPIO_Pin_5};
+uint32_t Key_UpdateTim;
 
 /*初始化按键的GPIO，EXTI，NVIC
   参数：按键引脚参数的结构体
@@ -112,10 +114,9 @@ void Key_IRQHandlerStatus(Key_InitTypedef *Key, uint32_t EXTI_Line)
 */
 void Key_LongHoldPoll(Key_InitTypedef *Key)
 {
+	if(Key->GetKey != 0) return;
+
 	if(GPIO_ReadInputDataBit(Key->GPIOx, Key->GPIO_Pin) == Bit_RESET && (SYSTime_Getms() - Key->Start_time) > Key->LongTime)
-	{
-		Key->GetKey = 4;
-	}else if(GPIO_ReadInputDataBit(Key->GPIOx, Key->GPIO_Pin) == Bit_RESET && (SYSTime_Getms() - Key->Start_time) < Key->LongTime)
 	{
 		Key->GetKey = 3;
 	}
@@ -136,13 +137,14 @@ void Key_ALLLongHoldPoll(void)
 
 /*返回按键的结果
   参数：按键引脚参数的结构体
-	返回：0：没有按下  1：短按松手  2：长按松手  3：短按不松手  4：长按不松手
+	返回：0：没有按下  1：短按松手  2：长按松手  3：长按不松手
 */
 uint8_t Key_GetStatus(Key_InitTypedef *Key)
 {
 	uint8_t ret;
 	
 	ret = Key->GetKey;
+	if(ret != 0) Key_UpdateTim = MyRTC_GetCounter();
 	Key->GetKey = 0;
 	
 	return ret;

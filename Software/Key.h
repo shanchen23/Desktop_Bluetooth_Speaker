@@ -30,7 +30,7 @@ extern Key_InitTypedef Key_Bown;
 extern Key_InitTypedef Key_Left;
 extern Key_InitTypedef Key_Right;
 extern Key_InitTypedef Key_OK;
-
+extern uint32_t Key_UpdateTim;
 
 void Key_Init(Key_InitTypedef *Key);
 void Key_ALLInit(void);
